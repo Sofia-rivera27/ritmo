@@ -8,36 +8,40 @@ public class Song {
     private String album;
     private String genre;
     private File imagenAlbum; 
+    private double duration;
     
-    public Song(String title, String artist, String album,String genre, File imagenAlbum) {
-        this.title = title;
-        this.artist = artist;
-        this.album = album;
-        this.imagenAlbum = imagenAlbum;
-    }
-
-	public String getGenre() {
-		return genre;
-	}
-
-	public void setGenre(String genre) {
+	public Song(String title, String artist, String album, String genre, File imagenAlbum, double duration) {
+		this.title = title;
+		this.artist = artist;
+		this.album = album;
 		this.genre = genre;
+		this.imagenAlbum = imagenAlbum;
+		this.duration = duration;
 	}
 
-	public String getTitulo() {
+	public Song(String title, String artist, String album, String genre, String imagenAlbumName, double duration) {
+		this.title = title;
+		this.artist = artist;
+		this.album = album;
+		this.genre = genre;
+		this.imagenAlbum = new File(imagenAlbumName);
+		this.duration = duration;
+	}	
+
+	public String getTitle() {
 		return title;
 	}
 
-	public void setTitulo(String title) {
+	public void setTitle(String title) {
 		this.title = title;
 	}
 
-	public String getArtista() {
+	public String getArtist() {
 		return artist;
 	}
 
-	public void setArtista(String artista) {
-		this.artist = artista;
+	public void setArtist(String artist) {
+		this.artist = artist;
 	}
 
 	public String getAlbum() {
@@ -48,12 +52,28 @@ public class Song {
 		this.album = album;
 	}
 
-	public File getImagenAlbumUrl() {
+	public String getGenre() {
+		return genre;
+	}
+
+	public void setGenre(String genre) {
+		this.genre = genre;
+	}
+
+	public File getImagenAlbum() {
 		return imagenAlbum;
 	}
 
-	public void setImagenAlbumUrl(File imagenAlbum) {
+	public void setImagenAlbum(File imagenAlbum) {
 		this.imagenAlbum = imagenAlbum;
+	}
+
+	public double getDuration() {
+		return duration;
+	}
+
+	public void setDuration(double duration) {
+		this.duration = duration;
 	}
 
 	@Override
