@@ -1,26 +1,34 @@
 package co.edu.uptc.presenter;
 
 import co.edu.uptc.view.ViewFrame;
+import co.edu.uptc.model.RitmoSystem;          
+import co.edu.uptc.model.UserStore;          
+import co.edu.uptc.model.PersistenceManager; 
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-/**
- * Presenter: conecta la vista con las acciones.
- * Solo conoce a ViewFrame (la ventana); no sabe nada de botones ni paneles.
- * Escucha los botones del menu de la izquierda (los del footer todavia no).
- */
 public class Presenter implements ActionListener {
 
     private ViewFrame frame;
+    
+    private RitmoSystem ritmoSystem;
+    private UserStore userStore;
+    private PersistenceManager persistenceManager;
+ 
 
     public Presenter() {
         frame = new ViewFrame();
+        
+        this.ritmoSystem = new RitmoSystem();
+        this.userStore = new UserStore();
+        this.persistenceManager = new PersistenceManager(userStore, ritmoSystem);
+        
+   
         frame.agregarListener(this);
         frame.setVisible(true);
     }
-
-    // Se llama cada vez que se presiona alguno de los botones del menu
+    
     public void actionPerformed(ActionEvent e) {
         String boton = e.getActionCommand();
 
@@ -39,7 +47,15 @@ public class Presenter implements ActionListener {
         }
     }
 
-    // Una funcion por cada apartado
+  
+    /**
+     * Este es el método que se debe llamar cuando el usuario elija la carpeta.
+     * Por ejemplo, desde el botón Elegir carpeta apenas inicie
+     */
+    public void guardarEnCarpeta(String rutaElegida) {
+        persistenceManager.saveAllDataInDirectory(rutaElegida);
+    }
+  
     private void mostrarHome() {
         frame.mostrarApartado(ViewFrame.HOME);
     }

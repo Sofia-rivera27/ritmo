@@ -87,4 +87,11 @@ public class UserStore {
 		String saved = props.getProperty(role + "." + name);
 		return saved != null && saved.equals(pass);
 	}
+	
+	// AÑADE ESTO DEBAJO DEL CONSTRUCTOR
+	public void setDirectory(String directoryPath) {
+		if (directoryPath != null && !directoryPath.trim().isEmpty()) {
+			this.file = new File(directoryPath + File.separator + "users.properties");
+		}
+	}
 }
