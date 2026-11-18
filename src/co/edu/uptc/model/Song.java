@@ -10,6 +10,7 @@ public class Song {
 	private File imagenAlbum;
 	private double duration;
 	private String PathFile;
+	private boolean favorite;
 
 	public Song(String title, String artist, String album, String genre, File imagenAlbum, double duration,
 			String pathFile) {
@@ -20,6 +21,7 @@ public class Song {
 		this.imagenAlbum = imagenAlbum;
 		this.duration = duration;
 		this.PathFile = pathFile;
+		this.favorite= false;
 	}
 
 	public Song(String title, String artist, String album, String genre, String imagenAlbumName, double duration) {
@@ -85,6 +87,16 @@ public class Song {
 
 	public void setPathFile(String pathFile) {
 		PathFile = pathFile;
+	}
+	
+	
+
+	public boolean isFavorite() {
+		return favorite;
+	}
+
+	public void setFavorite(boolean favorite) {
+		this.favorite = favorite;
 	}
 
 	@Override
