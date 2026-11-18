@@ -3,13 +3,13 @@ package co.edu.uptc.model;
 import java.io.File;
 
 public class Song {
-    private String title;
-    private String artist;
-    private String album;
-    private String genre;
-    private File imagenAlbum; 
-    private double duration;
-    
+	private String title;
+	private String artist;
+	private String album;
+	private String genre;
+	private File imagenAlbum;
+	private double duration;
+
 	public Song(String title, String artist, String album, String genre, File imagenAlbum, double duration) {
 		this.title = title;
 		this.artist = artist;
@@ -26,7 +26,7 @@ public class Song {
 		this.genre = genre;
 		this.imagenAlbum = new File(imagenAlbumName);
 		this.duration = duration;
-	}	
+	}
 
 	public String getTitle() {
 		return title;
@@ -77,9 +77,26 @@ public class Song {
 	}
 
 	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (!(obj instanceof Song)) {
+			return false;
+		}
+		Song other = (Song) obj;
+		return title.equalsIgnoreCase(other.title) && artist.equalsIgnoreCase(other.artist);
+	}
+
+	@Override
+	public int hashCode() {
+		return (title.toLowerCase() + artist.toLowerCase()).hashCode();
+	}
+
+	@Override
 	public String toString() {
 		return "Song [titulo=" + title + ", artista=" + artist + ", album=" + album + ", genre=" + genre
 				+ ", imagenAlbumUrl=" + imagenAlbum + "]";
 	}
-  
+
 }
