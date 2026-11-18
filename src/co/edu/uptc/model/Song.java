@@ -9,14 +9,17 @@ public class Song {
 	private String genre;
 	private File imagenAlbum;
 	private double duration;
+	private String PathFile;
 
-	public Song(String title, String artist, String album, String genre, File imagenAlbum, double duration) {
+	public Song(String title, String artist, String album, String genre, File imagenAlbum, double duration,
+			String pathFile) {
 		this.title = title;
 		this.artist = artist;
 		this.album = album;
 		this.genre = genre;
 		this.imagenAlbum = imagenAlbum;
 		this.duration = duration;
+		this.PathFile = pathFile;
 	}
 
 	public Song(String title, String artist, String album, String genre, String imagenAlbumName, double duration) {
@@ -74,6 +77,14 @@ public class Song {
 
 	public void setDuration(double duration) {
 		this.duration = duration;
+	}
+
+	public String getPathFile() {
+		return PathFile;
+	}
+
+	public void setPathFile(String pathFile) {
+		PathFile = pathFile;
 	}
 
 	@Override

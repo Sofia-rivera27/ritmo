@@ -3,7 +3,7 @@ package co.edu.uptc.model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RitmoSystem implements IModel{
+public class RitmoSystem extends Model {
 	private List<UserListener> users;
 	private Admin admin;	
 	
