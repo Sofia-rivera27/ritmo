@@ -8,4 +8,12 @@ public interface IModel {
 	List<Song> detectMp3InFolder(File folder);
 
 	List<Song> detectMp3(List<File> files);
+
+	List<Song> getSongs();
+
+	void addSong(Song song);
+
+	void removeSong(Song song);
+
+	List<Song> searchSongs(String text, String criteria);
 }

@@ -1,10 +1,18 @@
 # Maven
 target/
 
+# Java compilados
+bin/
+*.class
+
 # Eclipse
 .classpath
 .project
 .settings/
+
+# IntelliJ IDEA
+.idea/
+*.iml
 
 # Sistema operativo
 .DS_Store

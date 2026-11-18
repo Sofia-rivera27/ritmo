@@ -100,6 +100,23 @@ public class Song {
 	}
 
 	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (!(obj instanceof Song)) {
+			return false;
+		}
+		Song other = (Song) obj;
+		return title.equalsIgnoreCase(other.title) && artist.equalsIgnoreCase(other.artist);
+	}
+
+	@Override
+	public int hashCode() {
+		return (title.toLowerCase() + artist.toLowerCase()).hashCode();
+	}
+
+	@Override
 	public String toString() {
 		return "Song [titulo=" + title + ", artista=" + artist + ", album=" + album + ", genre=" + genre
 				+ ", imagenAlbumUrl=" + imagenAlbum + "]";
