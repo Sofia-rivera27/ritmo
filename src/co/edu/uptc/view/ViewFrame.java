@@ -44,7 +44,8 @@ public class ViewFrame extends JFrame {
 
         // Paneles provisionales (SectionPanel) hasta que se diseñe cada sección
         registerSection(HOME, new HomePanel(), mainPanel.getHomeButton());
-        registerSection(EXPLORE, new SectionPanel("Explorar"), mainPanel.getExploreButton());
+        // Explorar concentra la búsqueda, los filtros y los resultados de Jamendo.
+        registerSection(EXPLORE, new ExplorePanel(), mainPanel.getExploreButton());
         registerSection(LIBRARY, new SectionPanel("Biblioteca"), mainPanel.getLibraryButton());
         registerSection(FAVORITES, new FavoritesPanel(), mainPanel.getFavoritesButton());
         registerSection(PLAYLISTS, new SectionPanel("Playlists"), mainPanel.getPlaylistsButton());
@@ -82,5 +83,17 @@ public class ViewFrame extends JFrame {
             mainPanel.showContent(panel);
             mainPanel.selectButton(sectionButtons.get(section));
         }
+    }
+
+    public ExplorePanel getExplorePanel() {
+        return (ExplorePanel) sectionPanels.get(EXPLORE);
+    }
+
+    public MainPanel getMainPanel() {
+        return mainPanel;
+    }
+
+    public FavoritesPanel getFavoritesPanel() {
+        return (FavoritesPanel) sectionPanels.get(FAVORITES);
     }
 }

@@ -41,6 +41,7 @@ public class MainPanel extends MyPanel {
     private MyButton playPauseButton;
     private MyButton nextButton;
     private MyButton previousButton;
+    private MyButton queueButton;
 
     public MainPanel() {
         setBackgroundColor(Palette.BACKGROUND);
@@ -111,11 +112,11 @@ public class MainPanel extends MyPanel {
     }
 
     // ---------------------------------------------------------------
-    // Footer con los controles de reproducción (todavía no hacen nada)
+    // Controles de reproducción y acceso a la cola.
     // ---------------------------------------------------------------
     private void createFooter() {
         footer = new MyPanel();
-        footer.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        footer.setLayout(new BorderLayout());
         footer.setBackgroundColor(Palette.CARD);
         footer.setPreferredSize(new Dimension(0, FOOTER_HEIGHT));
 
@@ -123,9 +124,20 @@ public class MainPanel extends MyPanel {
         playPauseButton = createControlButton("▶", Palette.ACCENT);
         nextButton = createControlButton("⏭", Palette.TEXT);
 
-        footer.add(previousButton);
-        footer.add(playPauseButton);
-        footer.add(nextButton);
+        MyPanel controls = new MyPanel();
+        controls.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 20));
+        controls.setBackgroundColor(Palette.CARD);
+        controls.add(previousButton);
+        controls.add(playPauseButton);
+        controls.add(nextButton);
+        footer.add(controls, BorderLayout.CENTER);
+
+        // Mantiene el acceso a la cola en el reproductor, como en el diseño.
+        queueButton = new MyButton("Cola", Palette.CARD, Palette.TEXT, Palette.CARD_BORDER);
+        queueButton.setFixedSize(72, 34);
+        queueButton.setFontStyle(Font.PLAIN, 11);
+        queueButton.setToolTipText("Mostrar cola de reproducción");
+        footer.add(queueButton, BorderLayout.EAST);
     }
 
     private MyButton createControlButton(String symbol, Color color) {
@@ -217,5 +229,9 @@ public class MainPanel extends MyPanel {
 
     public MyButton getPreviousButton() {
         return previousButton;
+    }
+
+    public MyButton getQueueButton() {
+        return queueButton;
     }
 }
