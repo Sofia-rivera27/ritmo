@@ -1,106 +1,149 @@
 package co.edu.uptc.view;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+import javax.swing.JButton;
+
+/**
+ * Botón con esquinas redondeadas y efecto al pasar el mouse y al presionarlo.
+ * El fondo lo pinta esta clase en lugar del estilo por defecto de Swing.
+ */
 public class MyButton extends JButton {
 
-    private Color colorFondo;
-    private Color colorBorde; // null = sin borde
-    private int radio = 15;
-    private boolean encima = false;
+    private static final int HOVER_LIGHTEN = 20;
+    private static final int PRESSED_DARKEN = -25;
+    private static final Color HOVER_OVERLAY = new Color(255, 255, 255, 20);
+    private static final Color PRESSED_OVERLAY = new Color(255, 255, 255, 40);
 
-    public MyButton(){
-        
+    private Color backgroundColor;
+    /** Color del borde. null = sin borde. */
+    private Color borderColor;
+    private int cornerRadius = 15;
+    private boolean hovered = false;
+
+    public MyButton() {
+        this("", Palette.TRANSPARENT, Palette.TEXT, null);
     }
 
-    public MyButton(String texto, Color colorFondo, Color colorTexto, Color colorBorde) {
-        super(texto);
-        this.colorFondo = colorFondo;
-        this.colorBorde = colorBorde;
+    /**
+     * Crea un botón.
+     *
+     * @param text            texto del botón
+     * @param backgroundColor color de fondo
+     * @param textColor       color del texto
+     * @param borderColor     color del borde, o null para no tener borde
+     */
+    public MyButton(String text, Color backgroundColor, Color textColor, Color borderColor) {
+        super(text);
+        this.backgroundColor = backgroundColor;
+        this.borderColor = borderColor;
 
-        setForeground(colorTexto);
-        setFont(new Font("SansSerif", Font.PLAIN, 12));
+        setForeground(textColor);
+        setFont(new Font(Palette.FONT_FAMILY, Font.PLAIN, 12));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Quitamos el dibujo por defecto de Swing: lo dibujamos nosotros
+        // Se quita el dibujo por defecto de Swing: el botón lo dibuja paintComponent
         setContentAreaFilled(false);
         setBorderPainted(false);
         setFocusPainted(false);
         setOpaque(false);
-        setMargin(new Insets(0, 0, 0, 0)); // sin margen interno para que el texto quepa
+        setMargin(new Insets(0, 0, 0, 0));
 
-        // EFECTO DEL MAUSE
         addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                encima = true;
+                hovered = true;
                 repaint();
             }
 
             @Override
             public void mouseExited(MouseEvent e) {
-                encima = false;
+                hovered = false;
                 repaint();
             }
         });
     }
 
-    public void cambiarColores(Color fondo, Color texto, Color borde) {
-        this.colorFondo = fondo;
-        this.colorBorde = borde;
-        setForeground(texto);
+    /**
+     * Cambia los colores del botón.
+     *
+     * @param background color de fondo
+     * @param text       color del texto
+     * @param border     color del borde, o null para no tener borde
+     */
+    public void setColors(Color background, Color text, Color border) {
+        this.backgroundColor = background;
+        this.borderColor = border;
+        setForeground(text);
         repaint();
     }
 
-    public void cambiarRedondeo(int radio) {
-        this.radio = radio;
+    /**
+     * Redondea las esquinas del botón.
+     *
+     * @param cornerRadius radio en píxeles
+     */
+    public void setCornerRadius(int cornerRadius) {
+        this.cornerRadius = cornerRadius;
         repaint();
     }
 
-    public void cambiarFuente(int estilo, int tamano) {
-        setFont(new Font("SansSerif", estilo, tamano));
+    /**
+     * Cambia el estilo y el tamaño de la fuente.
+     *
+     * @param style estilo de la fuente, por ejemplo Font.BOLD
+     * @param size  tamaño de la fuente en puntos
+     */
+    public void setFontStyle(int style, int size) {
+        setFont(new Font(Palette.FONT_FAMILY, style, size));
     }
 
-    public void cambiarTamano(int ancho, int alto) {
-        Dimension d = new Dimension(ancho, alto);
-        setPreferredSize(d);
-        setMinimumSize(d);
-        setMaximumSize(d);
+    /**
+     * Le da al botón un tamaño fijo (preferido, mínimo y máximo).
+     *
+     * @param width  ancho en píxeles
+     * @param height alto en píxeles
+     */
+    public void setFixedSize(int width, int height) {
+        Dimension size = new Dimension(width, height);
+        setPreferredSize(size);
+        setMinimumSize(size);
+        setMaximumSize(size);
         revalidate();
     }
 
-    // Color de fondo segun el estado (normal, mouse encima, presionado)
-    private Color fondoActual() {
-        boolean transparente = colorFondo.getAlpha() == 0;
+    /** Obtiene el color de fondo según el estado (normal, mouse encima, presionado). */
+    private Color currentBackground() {
+        boolean transparent = backgroundColor.getAlpha() == 0;
 
         if (getModel().isPressed()) {
-            if (transparente) {
-                return new Color(255, 255, 255, 40);
-            } else {
-                return mover(colorFondo, -25);
-            }
+            return transparent ? PRESSED_OVERLAY : shiftBrightness(backgroundColor, PRESSED_DARKEN);
         }
-
-        if (encima) {
-            if (transparente) {
-                return new Color(255, 255, 255, 20);
-            } else {
-                return mover(colorFondo, 20);
-            }
+        if (hovered) {
+            return transparent ? HOVER_OVERLAY : shiftBrightness(backgroundColor, HOVER_LIGHTEN);
         }
-
-        return colorFondo;
+        return backgroundColor;
     }
 
-    // Aclara (cantidad positiva) u oscurece (negativa) un color
-    private Color mover(Color c, int cantidad) {
-        int r = Math.max(0, Math.min(255, c.getRed() + cantidad));
-        int g = Math.max(0, Math.min(255, c.getGreen() + cantidad));
-        int b = Math.max(0, Math.min(255, c.getBlue() + cantidad));
-        return new Color(r, g, b);
+    /** Aclara (cantidad positiva) u oscurece (cantidad negativa) un color. */
+    private Color shiftBrightness(Color color, int amount) {
+        int red = clamp(color.getRed() + amount);
+        int green = clamp(color.getGreen() + amount);
+        int blue = clamp(color.getBlue() + amount);
+        return new Color(red, green, blue);
+    }
+
+    private int clamp(int value) {
+        return Math.max(0, Math.min(255, value));
     }
 
     @Override
@@ -109,13 +152,13 @@ public class MyButton extends JButton {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        int arco = radio * 2;
-        g2.setColor(fondoActual());
-        g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arco, arco);
+        int arc = cornerRadius * 2;
+        g2.setColor(currentBackground());
+        g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
 
-        if (colorBorde != null) {
-            g2.setColor(colorBorde);
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arco, arco);
+        if (borderColor != null) {
+            g2.setColor(borderColor);
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
         }
 
         super.paintComponent(g2); // dibuja el texto encima

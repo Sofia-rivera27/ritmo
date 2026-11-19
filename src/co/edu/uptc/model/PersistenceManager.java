@@ -1,5 +1,8 @@
 package co.edu.uptc.model;
 
+/**
+ * Guarda todos los datos de la aplicación (usuarios y bibliotecas) en la misma carpeta.
+ */
 public class PersistenceManager {
 
     private UserStore userStore;
@@ -11,25 +14,23 @@ public class PersistenceManager {
     }
 
     /**
-     * Este es el método que debes llamar desde la interfaz (o el Presenter)
-     * cuando el usuario elija la carpeta.
+     * Guarda todos los datos en la carpeta indicada. Se llama desde el Presenter
+     * cuando el usuario elige la carpeta.
+     *
+     * @param directoryPath ruta de la carpeta que eligió el usuario
      */
     public void saveAllDataInDirectory(String directoryPath) {
-        // 1. Le decimos a UserStore dónde guardar
         userStore.setDirectory(directoryPath);
-        
-        // 2. Le decimos a RitmoSystem dónde guardar
         ritmoSystem.setJsonDirectory(directoryPath);
-        
-        // 3. Ejecutamos los guardados
+
         try {
             userStore.save();
         } catch (Exception e) {
             System.err.println("Error guardando usuarios: " + e.getMessage());
         }
-        
+
         ritmoSystem.saveData();
-        
-        System.out.println("Persistencia completada en: " + directoryPath);
+
+        System.out.println("Datos guardados en: " + directoryPath);
     }
 }

@@ -11,29 +11,43 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
+
 import javafx.application.Platform;
 import javafx.collections.ObservableMap;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 
+/**
+ * Catálogo de canciones. Detecta archivos .mp3, lee sus metadatos con JavaFX
+ * y permite buscar entre las canciones cargadas.
+ */
 public class Model implements IModel {
+
     private static final String MP3_EXTENSION = ".mp3";
+    /** Se le muestra al usuario cuando la canción no tiene artista, álbum o género. */
     private static final String UNKNOWN = "Desconocido";
     private static final int LOAD_TIMEOUT_SECONDS = 10;
+
     private static boolean javaFxStarted = false;
 
     private MediaPlayer loadingPlayer;
     private List<Song> songs;
 
     public Model() {
-        songs = new ArrayList<Song>();
+        songs = new ArrayList<>();
     }
 
+    /**
+     * Busca todos los archivos .mp3 de una carpeta (incluidas sus subcarpetas)
+     * y lee sus metadatos.
+     *
+     * @param folder carpeta que se desea revisar
+     * @return canciones encontradas, o una lista vacía si la carpeta no es válida
+     */
     @Override
     public List<Song> detectMp3InFolder(File folder) {
-        List<Song> songs = new ArrayList<>();
         if (folder == null || !folder.isDirectory()) {
-            return songs;
+            return new ArrayList<>();
         }
         List<File> candidates = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(folder.toPath())) {
@@ -44,23 +58,30 @@ public class Model implements IModel {
         return detectMp3(candidates);
     }
 
+    /**
+     * Lee los metadatos de los archivos .mp3 recibidos. Este método bloquea el
+     * hilo, así que no se debe llamar desde el hilo de JavaFX.
+     *
+     * @param files archivos que se desean leer
+     * @return canciones que se pudieron leer
+     */
     @Override
     public List<Song> detectMp3(List<File> files) {
         checkNotFxThread();
-        List<Song> songs = new ArrayList<>();
+        List<Song> found = new ArrayList<>();
         if (files == null) {
-            return songs;
+            return found;
         }
         startJavaFx();
         for (File file : files) {
             if (hasMp3Extension(file)) {
                 Song song = readWithJavaFx(file);
                 if (song != null) {
-                    songs.add(song);
+                    found.add(song);
                 }
             }
         }
-        return songs;
+        return found;
     }
 
     private boolean hasMp3Extension(File file) {
@@ -80,6 +101,7 @@ public class Model implements IModel {
                 Platform.startup(() -> {
                 });
             } catch (IllegalStateException e) {
+                // JavaFX ya estaba iniciado
             }
             Platform.setImplicitExit(false);
             javaFxStarted = true;
@@ -118,19 +140,21 @@ public class Model implements IModel {
 
     private Song buildSong(File file, Media media) {
         ObservableMap<String, Object> metadata = media.getMetadata();
-        String name = file.getName();
-        String fileTitle = name.substring(0, name.length() - MP3_EXTENSION.length());
+        String fileName = file.getName();
+        String fileTitle = fileName.substring(0, fileName.length() - MP3_EXTENSION.length());
 
         double seconds = media.getDuration().toSeconds();
         if (Double.isNaN(seconds) || Double.isInfinite(seconds)) {
             seconds = 0;
         }
-        return new Song(text(metadata.get("title"), fileTitle), text(metadata.get("artist"), UNKNOWN),
-                text(metadata.get("album"), UNKNOWN), text(metadata.get("genre"), UNKNOWN), null, seconds,
-                file.getAbsolutePath());
+        return new Song(textOrDefault(metadata.get("title"), fileTitle),
+                textOrDefault(metadata.get("artist"), UNKNOWN),
+                textOrDefault(metadata.get("album"), UNKNOWN),
+                textOrDefault(metadata.get("genre"), UNKNOWN),
+                null, seconds, file.getAbsolutePath());
     }
 
-    private String text(Object value, String defaultValue) {
+    private String textOrDefault(Object value, String defaultValue) {
         if (value == null || value.toString().isBlank()) {
             return defaultValue;
         }
@@ -152,18 +176,26 @@ public class Model implements IModel {
         songs.remove(song);
     }
 
+    /**
+     * Busca las canciones cargadas cuyo título, artista o género contenga el
+     * texto, sin importar mayúsculas o minúsculas.
+     *
+     * @param text     texto que se desea buscar
+     * @param criteria campo en el que se busca
+     * @return canciones que coinciden
+     */
     @Override
-    public List<Song> searchSongs(String text, String criteria) {
-        List<Song> results = new ArrayList<Song>();
-        String search = text.toLowerCase().trim();
+    public List<Song> searchSongs(String text, SearchCriteria criteria) {
+        List<Song> results = new ArrayList<>();
+        String query = text.toLowerCase().trim();
 
         for (Song song : songs) {
             String value;
             switch (criteria) {
-                case "Artista":
+                case ARTIST:
                     value = song.getArtist();
                     break;
-                case "Género":
+                case GENRE:
                     value = song.getGenre();
                     break;
                 default:
@@ -171,7 +203,7 @@ public class Model implements IModel {
                     break;
             }
 
-            if (value != null && value.toLowerCase().contains(search)) {
+            if (value != null && value.toLowerCase().contains(query)) {
                 results.add(song);
             }
         }

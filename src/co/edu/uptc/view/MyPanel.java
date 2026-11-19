@@ -1,58 +1,91 @@
 package co.edu.uptc.view;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.LayoutManager;
+import java.awt.RenderingHints;
 
+import javax.swing.JPanel;
+
+/**
+ * Panel con esquinas redondeadas y borde de 1 píxel opcionales. El fondo lo
+ * pinta esta clase para poder redondear las esquinas.
+ */
 public class MyPanel extends JPanel {
 
-    private int radio = 0;              // 0 = esquinas rectas
-    private Color colorBorde = null;    // null = sin borde
+    /** Radio de las esquinas en píxeles. 0 = esquinas rectas. */
+    private int cornerRadius = 0;
+    /** Color del borde. null = sin borde. */
+    private Color borderColor = null;
 
     public MyPanel() {
         setPreferredSize(new Dimension(300, 200));
         setBackground(new Color(220, 220, 220));
         setLayout(null);
-        setOpaque(false); // el fondo lo pintamos nosotros (para poder redondear)
+        setOpaque(false);
     }
 
-    // Cambiar tamaño
-    public void cambiarTamaño(int ancho, int alto) {
-        setPreferredSize(new Dimension(ancho, alto));
+    /**
+     * Cambia el tamaño preferido del panel.
+     *
+     * @param width  ancho en píxeles
+     * @param height alto en píxeles
+     */
+    public void setPreferredSize(int width, int height) {
+        setPreferredSize(new Dimension(width, height));
         revalidate();
     }
 
-    // Cambiar color
-    public void cambiarColor(Color color) {
+    /**
+     * Cambia el color de fondo y vuelve a pintar el panel.
+     *
+     * @param color nuevo color de fondo
+     */
+    public void setBackgroundColor(Color color) {
         setBackground(color);
         repaint();
     }
 
-    // Cambiar posición y tamaño
-    public void cambiarPosicion(int x, int y, int ancho, int alto) {
-        setBounds(x, y, ancho, alto);
-    }
-
-    // Agregar componentes
-    public void agregarComponente(Component componente) {
-        add(componente);
+    /**
+     * Agrega un componente y vuelve a pintar el panel.
+     *
+     * @param component componente que se desea agregar
+     */
+    public void addComponent(Component component) {
+        add(component);
         repaint();
     }
 
-    // Cambiar diseño
-    public void cambiarLayout(LayoutManager layout) {
+    /**
+     * Cambia el layout y recalcula la posición de los componentes.
+     *
+     * @param layout nuevo layout
+     */
+    public void applyLayout(LayoutManager layout) {
         setLayout(layout);
         revalidate();
     }
 
-    // NUEVO: esquinas redondeadas (radio en pixeles)
-    public void cambiarRedondeo(int radio) {
-        this.radio = radio;
+    /**
+     * Redondea las esquinas del panel.
+     *
+     * @param cornerRadius radio en píxeles, 0 para esquinas rectas
+     */
+    public void setCornerRadius(int cornerRadius) {
+        this.cornerRadius = cornerRadius;
         repaint();
     }
 
-    // NUEVO: borde de 1 pixel (null para quitarlo)
-    public void cambiarBorde(Color color) {
-        this.colorBorde = color;
+    /**
+     * Dibuja un borde de 1 píxel alrededor del panel.
+     *
+     * @param borderColor color del borde, o null para quitarlo
+     */
+    public void setBorderColor(Color borderColor) {
+        this.borderColor = borderColor;
         repaint();
     }
 
@@ -61,44 +94,14 @@ public class MyPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int arco = radio * 2;
+        int arc = cornerRadius * 2;
         g2.setColor(getBackground());
-        g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arco, arco);
+        g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
 
-        if (colorBorde != null) {
-            g2.setColor(colorBorde);
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arco, arco);
+        if (borderColor != null) {
+            g2.setColor(borderColor);
+            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
         }
         g2.dispose();
     }
 }
-/*
-    private static final Color TARJETA = new Color(28, 28, 28);
-    private static final Color BORDE_TARJETA = new Color(48, 48, 48);
-    private static final Color CAMPO = new Color(38, 38, 38);
-    private static final Color AMARILLO = new Color(255, 193, 7);
-    private static final Color TEXTO = new Color(235, 235, 235);
-    private static final Color TEXTO_SUAVE = new Color(150, 150, 150);
-    private static final Color TEXTO_OSCURO = new Color(20, 20, 20);
-    private static final Color TRANSPARENTE = new Color(0, 0, 0, 0);
-    private static final int ANCHO = 274;
-
-
-    private MyPanel options;
-    private MyPanel footer;
-
-    private MyButton Home;
-    private MyButton Explorar;
-    private MyButton Biblioteca;
-    private MyButton Playlists;
-    private MyButton Historial;
-    private MyButton Configuracion;
-
-    private MyButton pausa;
-    private MyButton avanzar;
-    private MyButton retroceder;
-
-    private JFrame frameProvisional;
-
-
-*/

@@ -1,90 +1,62 @@
 package co.edu.uptc.presenter;
 
-import co.edu.uptc.view.ViewFrame;
-import co.edu.uptc.model.RitmoSystem;
-import co.edu.uptc.model.UserStore;
-import co.edu.uptc.model.PersistenceManager;
-
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import co.edu.uptc.model.PersistenceManager;
+import co.edu.uptc.model.RitmoSystem;
+import co.edu.uptc.model.UserStore;
+import co.edu.uptc.view.ViewFrame;
+
+/**
+ * Conecta la vista con el modelo. Recibe las acciones del usuario desde la
+ * vista y decide qué hacer con ellas.
+ */
 public class Presenter implements ActionListener {
 
-	private ViewFrame frame;
+    private ViewFrame frame;
 
-	private RitmoSystem ritmoSystem;
-	private UserStore userStore;
-	private PersistenceManager persistenceManager;
+    private RitmoSystem ritmoSystem;
+    private UserStore userStore;
+    private PersistenceManager persistenceManager;
 
-	public Presenter() {
-		frame = new ViewFrame();
+    public Presenter() {
+        frame = new ViewFrame();
 
-		this.ritmoSystem = new RitmoSystem();
-		this.userStore = new UserStore();
-		this.persistenceManager = new PersistenceManager(userStore, ritmoSystem);
+        ritmoSystem = new RitmoSystem();
+        userStore = new UserStore();
+        persistenceManager = new PersistenceManager(userStore, ritmoSystem);
 
-		frame.agregarListener(this);
-		frame.setVisible(true);
-	}
+        frame.addMenuListener(this);
+        frame.setVisible(true);
+    }
 
-	public void actionPerformed(ActionEvent e) {
-		String boton = e.getActionCommand();
+    @Override
+    public void actionPerformed(ActionEvent event) {
+        String command = event.getActionCommand();
 
-		if (boton.equals(ViewFrame.HOME)) {
-			mostrarHome();
-		} else if (boton.equals(ViewFrame.EXPLORAR)) {
-			mostrarExplorar();
-		} else if (boton.equals(ViewFrame.BIBLIOTECA)) {
-			mostrarBiblioteca();
-		} else if (boton.equals(ViewFrame.PLAYLISTS)) {
-			mostrarPlaylists();
-		} else if (boton.equals(ViewFrame.HISTORIAL)) {
-			mostrarHistorial();
-		} else if (boton.equals(ViewFrame.CONFIGURACION)) {
-			mostrarConfiguracion();
-		} else if (boton.equals(ViewFrame.FAVORITES)) {
-			mostrarFavorites();
+        switch (command) {
+            case ViewFrame.HOME:
+            case ViewFrame.EXPLORE:
+            case ViewFrame.LIBRARY:
+            case ViewFrame.FAVORITES:
+            case ViewFrame.PLAYLISTS:
+            case ViewFrame.HISTORY:
+            case ViewFrame.SETTINGS:
+                frame.showSection(command);
+                break;
+            default:
+                break;
+        }
+    }
 
-		}
-	}
-
-	/**
-	 * Este es el método que se debe llamar cuando el usuario elija la carpeta. Por
-	 * ejemplo, desde el botón Elegir carpeta apenas inicie
-	 */
-	public void guardarEnCarpeta(String rutaElegida) {
-		persistenceManager.saveAllDataInDirectory(rutaElegida);
-	}
-
-	private void mostrarHome() {
-		frame.mostrarApartado(ViewFrame.HOME);
-	}
-
-	private void mostrarExplorar() {
-		frame.mostrarApartado(ViewFrame.EXPLORAR);
-	}
-
-	private void mostrarBiblioteca() {
-		frame.mostrarApartado(ViewFrame.BIBLIOTECA);
-	}
-
-	private void mostrarPlaylists() {
-		frame.mostrarApartado(ViewFrame.PLAYLISTS);
-	}
-
-	private void mostrarHistorial() {
-		frame.mostrarApartado(ViewFrame.HISTORIAL);
-	}
-
-	private void mostrarConfiguracion() {
-		frame.mostrarApartado(ViewFrame.CONFIGURACION);
-	}
-
-	private void mostrarFavorites() {
-		frame.mostrarApartado(ViewFrame.FAVORITES);
-	}
-
-	public static void main(String[] args) {
-		new Presenter();
-	}
+    /**
+     * Guarda todos los datos en la carpeta que eligió el usuario. Se llama, por
+     * ejemplo, desde el botón "Elegir carpeta" apenas inicia la aplicación.
+     *
+     * @param directoryPath ruta de la carpeta elegida
+     */
+    public void saveInDirectory(String directoryPath) {
+        persistenceManager.saveAllDataInDirectory(directoryPath);
+    }
 }

@@ -3,17 +3,20 @@ package co.edu.uptc.model;
 import java.io.File;
 import java.util.List;
 
+/**
+ * Operaciones del modelo que usa el Presenter.
+ */
 public interface IModel {
 
-	List<Song> detectMp3InFolder(File folder);
+    List<Song> detectMp3InFolder(File folder);
 
-	List<Song> detectMp3(List<File> files);
+    List<Song> detectMp3(List<File> files);
 
-	List<Song> getSongs();
+    List<Song> getSongs();
 
-	void addSong(Song song);
+    void addSong(Song song);
 
-	void removeSong(Song song);
+    void removeSong(Song song);
 
-	List<Song> searchSongs(String text, String criteria);
+    List<Song> searchSongs(String text, SearchCriteria criteria);
 }

@@ -1,404 +1,400 @@
 package co.edu.uptc.view;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
+
 /**
- * Panel encargado de mostrar la sección de canciones favoritas.
+ * Sección de canciones favoritas.
  * <p>
- * presenta la
- * información y notifica las acciones del usuario mediante listeners, pero
- * no contiene la lógica para eliminar canciones ni para reproducirlas.
+ * Muestra la información y avisa las acciones del usuario mediante listeners,
+ * pero no tiene la lógica para eliminar ni reproducir canciones.
  *
  * @author SofiaValentinaG
  */
 public class FavoritesPanel extends MyPanel {
 
-	// Paleta del proyecto
-	private static final Color FONDO = new Color(3, 3, 3);
-	private static final Color TARJETA = new Color(28, 28, 28);
-	private static final Color AMARILLO = new Color(255, 193, 7);
-	private static final Color TEXTO = new Color(235, 235, 235);
-	private static final Color TEXTO_SUAVE = new Color(150, 150, 150);
-	private static final Color TEXTO_OSCURO = new Color(20, 20, 20);
-	private static final Color TRANSPARENTE = new Color(0, 0, 0, 0);
-	// Extra: borde d elas tarjetas
-	private static final Color BORDE_TARJETA = new Color(48, 48, 48);
-	private static final Color CAJA_ICONO = new Color(40, 40, 40);
+    private static final Color ICON_BOX = new Color(40, 40, 40);
 
-	private static final String PLACEHOLDER = "Buscar por artista, género o canción...";
-	private static final int ALTO_FILA = 46;
+    private static final String SEARCH_PLACEHOLDER = "Buscar por artista, género o canción...";
+    private static final String TITLE_PREFIX = "Favoritos · ";
+    private static final int ROW_HEIGHT = 46;
 
-	private JTextField txtBuscar;
-	private JLabel lblTitulo;
-	private MyButton btnReproducirTodo;
-	private MyPanel lista;
+    // Posición de cada dato dentro del arreglo de la canción
+    private static final int TITLE = 0;
+    private static final int ARTIST = 1;
+    private static final int ALBUM = 2;
+    private static final int GENRE = 3;
+    private static final int DURATION = 4;
 
-	private final List<MyButton> botonesQuitar = new ArrayList<>();
-	private ActionListener quitarListener;
+    private JTextField searchField;
+    private JLabel titleLabel;
+    private MyButton playAllButton;
+    private MyPanel songList;
+
+    private final List<MyButton> removeButtons = new ArrayList<>();
+    private ActionListener removeListener;
 
     /**
-     * Construye y configura el panel de favoritos.
-     * <p>
-     * Inicializa los colores, el diseño, la barra superior y el cuerpo
-     * principal. Finalmente carga una lista inicial de canciones de prueba.
+     * Construye el panel de favoritos: barra superior, cuerpo y canciones de prueba.
      */
-	public FavoritesPanel() {
-		cambiarColor(FONDO);
-		cambiarLayout(new BorderLayout());
-		setPreferredSize(null);
-		setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+    public FavoritesPanel() {
+        setBackgroundColor(Palette.BACKGROUND);
+        applyLayout(new BorderLayout());
+        setPreferredSize(null);
+        setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
 
-		add(crearBarraSuperior(), BorderLayout.NORTH);
-		add(crearCuerpo(), BorderLayout.CENTER);
+        add(createTopBar(), BorderLayout.NORTH);
+        add(createBody(), BorderLayout.CENTER);
 
-		cargarDatosDePrueba();
-	}
-	  /**
-     * Crea la barra superior que contiene el campo de búsqueda y el avatar.
+        loadSampleData();
+    }
+
+    /**
+     * Crea la barra superior con el campo de búsqueda y el avatar.
      *
-     * @return panel configurado con los componentes de la barra superior
+     * @return panel con los componentes de la barra superior
      */
+    private MyPanel createTopBar() {
+        MyPanel bar = new MyPanel();
+        bar.applyLayout(new BorderLayout(12, 0));
+        bar.setBackgroundColor(Palette.BACKGROUND);
+        bar.setPreferredSize(new Dimension(0, 62));
+        bar.setBorder(BorderFactory.createEmptyBorder(0, 0, 18, 0));
 
-	private MyPanel crearBarraSuperior() {
-		MyPanel barra = new MyPanel();
-		barra.cambiarLayout(new BorderLayout(12, 0));
-		barra.cambiarColor(FONDO);
-		barra.setPreferredSize(new Dimension(0, 62));
-		barra.setBorder(BorderFactory.createEmptyBorder(0, 0, 18, 0));
+        MyPanel searchBox = new MyPanel();
+        searchBox.applyLayout(new BorderLayout());
+        searchBox.setBackgroundColor(Palette.CARD);
+        searchBox.setCornerRadius(22);
+        searchBox.setBorderColor(Palette.CARD_BORDER);
+        searchBox.setBorder(BorderFactory.createEmptyBorder(0, 18, 0, 18));
 
-		MyPanel buscador = new MyPanel();
-		buscador.cambiarLayout(new BorderLayout());
-		buscador.cambiarColor(TARJETA);
-		buscador.cambiarRedondeo(22);
-		buscador.cambiarBorde(BORDE_TARJETA);
-		buscador.setBorder(BorderFactory.createEmptyBorder(0, 18, 0, 18));
+        searchField = new JTextField(SEARCH_PLACEHOLDER);
+        searchField.setOpaque(false);
+        searchField.setBorder(null);
+        searchField.setForeground(Palette.TEXT_MUTED);
+        searchField.setCaretColor(Palette.TEXT);
+        searchField.setFont(new Font(Palette.FONT_FAMILY, Font.PLAIN, 13));
+        // Comportamiento del texto de ayuda (placeholder)
+        searchField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                if (searchField.getText().equals(SEARCH_PLACEHOLDER)) {
+                    searchField.setText("");
+                    searchField.setForeground(Palette.TEXT);
+                }
+            }
 
-		txtBuscar = new JTextField(PLACEHOLDER);
-		txtBuscar.setOpaque(false);
-		txtBuscar.setBorder(null);
-		txtBuscar.setForeground(TEXTO_SUAVE);
-		txtBuscar.setCaretColor(TEXTO);
-		txtBuscar.setFont(new Font("SansSerif", Font.PLAIN, 13));
-		// Comportamiento de placeholder
-		txtBuscar.addFocusListener(new FocusAdapter() {
-			@Override
-			public void focusGained(FocusEvent e) {
-				if (txtBuscar.getText().equals(PLACEHOLDER)) {
-					txtBuscar.setText("");
-					txtBuscar.setForeground(TEXTO);
-				}
-			}
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (searchField.getText().isEmpty()) {
+                    searchField.setText(SEARCH_PLACEHOLDER);
+                    searchField.setForeground(Palette.TEXT_MUTED);
+                }
+            }
+        });
+        searchBox.add(searchField, BorderLayout.CENTER);
 
-			@Override
-			public void focusLost(FocusEvent e) {
-				if (txtBuscar.getText().isEmpty()) {
-					txtBuscar.setText(PLACEHOLDER);
-					txtBuscar.setForeground(TEXTO_SUAVE);
-				}
-			}
-		});
-		buscador.add(txtBuscar, BorderLayout.CENTER);
+        MyButton avatar = new MyButton("L", Palette.ACCENT, Palette.TEXT_DARK, null);
+        avatar.setFixedSize(40, 40);
+        avatar.setCornerRadius(20); // la mitad del tamaño forma un círculo
+        avatar.setFontStyle(Font.BOLD, 14);
 
-		MyButton avatar = new MyButton("L", AMARILLO, TEXTO_OSCURO, null);
-		avatar.cambiarTamano(40, 40);
-		avatar.cambiarRedondeo(20); // radio = mitad del tamaño circulo
-		avatar.cambiarFuente(Font.BOLD, 14);
+        bar.add(searchBox, BorderLayout.CENTER);
+        bar.add(avatar, BorderLayout.EAST);
+        return bar;
+    }
 
-		barra.add(buscador, BorderLayout.CENTER);
-		barra.add(avatar, BorderLayout.EAST);
-		return barra;
-	}
-
-	/**
-     * Construye el contenido principal de la vista de favoritos.
-     * <p>
-     * Organiza el encabezado, el subtítulo, la lista de canciones y la
-     * tarjeta inferior en una columna vertical.
+    /**
+     * Construye el contenido principal: encabezado, subtítulo, lista de canciones
+     * y tarjeta inferior, en una columna vertical.
      *
-     * @return panel que contiene el cuerpo de la vista
+     * @return panel con el cuerpo de la vista
      */
-	private MyPanel crearCuerpo() {
-		MyPanel cuerpo = new MyPanel();
-		cuerpo.cambiarLayout(new BorderLayout());
-		cuerpo.cambiarColor(FONDO);
-		cuerpo.setPreferredSize(null);
+    private MyPanel createBody() {
+        MyPanel body = new MyPanel();
+        body.applyLayout(new BorderLayout());
+        body.setBackgroundColor(Palette.BACKGROUND);
+        body.setPreferredSize(null);
 
-		// Columna vertical que se pega arriba 
-		MyPanel columna = new MyPanel();
-		columna.cambiarLayout(new BoxLayout(columna, BoxLayout.Y_AXIS));
-		columna.cambiarColor(FONDO);
-		columna.setPreferredSize(null);
+        // Columna vertical pegada arriba
+        MyPanel column = new MyPanel();
+        column.applyLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
+        column.setBackgroundColor(Palette.BACKGROUND);
+        column.setPreferredSize(null);
 
-		columna.add(crearEncabezado());
+        column.add(createHeader());
 
-		JLabel subtitulo = new JLabel("Solo las canciones marcadas con ♥. Quitarlas aquí no las borra de la biblioteca.");
-		subtitulo.setForeground(TEXTO_SUAVE);
-		subtitulo.setFont(new Font("SansSerif", Font.PLAIN, 11));
-		subtitulo.setBorder(BorderFactory.createEmptyBorder(2, 0, 14, 0));
-		subtitulo.setAlignmentX(Component.LEFT_ALIGNMENT);
-		columna.add(subtitulo);
+        JLabel subtitle = new JLabel(
+                "Solo las canciones marcadas con ♥. Quitarlas aquí no las borra de la biblioteca.");
+        subtitle.setForeground(Palette.TEXT_MUTED);
+        subtitle.setFont(new Font(Palette.FONT_FAMILY, Font.PLAIN, 11));
+        subtitle.setBorder(BorderFactory.createEmptyBorder(2, 0, 14, 0));
+        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        column.add(subtitle);
 
-		lista = new MyPanel();
-		lista.cambiarLayout(new BoxLayout(lista, BoxLayout.Y_AXIS));
-		lista.cambiarColor(FONDO);
-		lista.setPreferredSize(null);
-		lista.setAlignmentX(Component.LEFT_ALIGNMENT);
-		columna.add(lista);
+        songList = new MyPanel();
+        songList.applyLayout(new BoxLayout(songList, BoxLayout.Y_AXIS));
+        songList.setBackgroundColor(Palette.BACKGROUND);
+        songList.setPreferredSize(null);
+        songList.setAlignmentX(Component.LEFT_ALIGNMENT);
+        column.add(songList);
 
-		columna.add(Box.createVerticalStrut(10));
-		columna.add(crearTarjetaInferior());
+        column.add(Box.createVerticalStrut(10));
+        column.add(createBottomCard());
 
-		cuerpo.add(columna, BorderLayout.NORTH);
-		return cuerpo;
-	}
-	 /**
-     * Crea el encabezado con el título de favoritos y el botón
-     * para reproducir todas las canciones.
+        body.add(column, BorderLayout.NORTH);
+        return body;
+    }
+
+    /**
+     * Crea el encabezado con el título de favoritos y el botón para reproducir todo.
      *
      * @return panel del encabezado
      */
+    private MyPanel createHeader() {
+        MyPanel header = new MyPanel();
+        header.applyLayout(new BorderLayout());
+        header.setBackgroundColor(Palette.BACKGROUND);
+        header.setPreferredSize(new Dimension(0, 34));
+        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        header.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-	private MyPanel crearEncabezado() {
-		MyPanel encabezado = new MyPanel();
-		encabezado.cambiarLayout(new BorderLayout());
-		encabezado.cambiarColor(FONDO);
-		encabezado.setPreferredSize(new Dimension(0, 34));
-		encabezado.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
-		encabezado.setAlignmentX(Component.LEFT_ALIGNMENT);
+        titleLabel = new JLabel(TITLE_PREFIX + 0);
+        titleLabel.setForeground(Palette.TEXT);
+        titleLabel.setFont(new Font(Palette.FONT_FAMILY, Font.BOLD, 20));
 
-		lblTitulo = new JLabel("Favoritos · 0");
-		lblTitulo.setForeground(TEXTO);
-		lblTitulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        playAllButton = new MyButton("Reproducir todo", Palette.ACCENT, Palette.TEXT_DARK, null);
+        playAllButton.setFixedSize(130, 30);
+        playAllButton.setCornerRadius(15);
+        playAllButton.setFontStyle(Font.BOLD, 11);
 
-		btnReproducirTodo = new MyButton("Reproducir todo", AMARILLO, TEXTO_OSCURO, null);
-		btnReproducirTodo.cambiarTamano(130, 30);
-		btnReproducirTodo.cambiarRedondeo(15);
-		btnReproducirTodo.cambiarFuente(Font.BOLD, 11);
-
-		encabezado.add(lblTitulo, BorderLayout.WEST);
-		encabezado.add(btnReproducirTodo, BorderLayout.EAST);
-		return encabezado;
-	}
+        header.add(titleLabel, BorderLayout.WEST);
+        header.add(playAllButton, BorderLayout.EAST);
+        return header;
+    }
 
     /**
-     * Crea la tarjeta informativa ubicada debajo de la lista de canciones.
+     * Crea la tarjeta informativa que va debajo de la lista de canciones.
      *
      * @return panel con el mensaje para agregar canciones a favoritos
      */
+    private MyPanel createBottomCard() {
+        MyPanel card = new MyPanel();
+        card.applyLayout(new BorderLayout());
+        card.setBackgroundColor(Palette.CARD);
+        card.setCornerRadius(10);
+        card.setBorderColor(Palette.CARD_BORDER);
+        card.setPreferredSize(new Dimension(0, 46));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        card.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
 
-	private MyPanel crearTarjetaInferior() {
-		MyPanel tarjeta = new MyPanel();
-		tarjeta.cambiarLayout(new BorderLayout());
-		tarjeta.cambiarColor(TARJETA);
-		tarjeta.cambiarRedondeo(10);
-		tarjeta.cambiarBorde(BORDE_TARJETA);
-		tarjeta.setPreferredSize(new Dimension(0, 46));
-		tarjeta.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-		tarjeta.setAlignmentX(Component.LEFT_ALIGNMENT);
-		tarjeta.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 16));
+        JLabel message = new JLabel("Para agregar más, ve a Biblioteca y toca ♡ en la canción.");
+        message.setForeground(Palette.TEXT_MUTED);
+        message.setFont(new Font(Palette.FONT_FAMILY, Font.PLAIN, 11));
+        card.add(message, BorderLayout.CENTER);
+        return card;
+    }
 
-		JLabel texto = new JLabel("Para agregar más, ve a Biblioteca y toca ♡ en la canción.");
-		texto.setForeground(TEXTO_SUAVE);
-		texto.setFont(new Font("SansSerif", Font.PLAIN, 11));
-		tarjeta.add(texto, BorderLayout.CENTER);
-		return tarjeta;
-	}
-	   /**
-     * Construye una fila visual para representar una canción favorita.
-     * <p>
-     * El arreglo recibido debe contener, en orden: título, artista,
-     * álbum, género y duración.
+    /**
+     * Construye la fila que muestra una canción favorita.
      *
-     * @param cancion datos de la canción que se mostrarán en la fila
-     * @param indice posición de la canción en la lista; se utiliza para
-     *               mostrar el número y establecer el comando del botón
+     * @param song  datos de la canción, en orden: título, artista, álbum, género y duración
+     * @param index posición de la canción en la lista; se usa para mostrar el número
+     *              y como comando de acción del botón quitar
      * @return panel que representa la canción
      */
-	
-	private MyPanel crearFila(String[] cancion, int indice) {
-		// cancion = {titulo, artista, album, genero, duracion}
-		MyPanel fila = new MyPanel();
-		fila.cambiarLayout(new GridBagLayout());
-		fila.cambiarColor(TARJETA);
-		fila.cambiarRedondeo(10);
-		fila.setPreferredSize(new Dimension(0, ALTO_FILA));
-		fila.setMaximumSize(new Dimension(Integer.MAX_VALUE, ALTO_FILA));
-		fila.setAlignmentX(Component.LEFT_ALIGNMENT);
+    private MyPanel createRow(String[] song, int index) {
+        MyPanel row = new MyPanel();
+        row.applyLayout(new GridBagLayout());
+        row.setBackgroundColor(Palette.CARD);
+        row.setCornerRadius(10);
+        row.setPreferredSize(new Dimension(0, ROW_HEIGHT));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		// 1. Numero
-		JLabel numero = crearTexto(String.valueOf(indice + 1), TEXTO_SUAVE, Font.PLAIN, 11);
-		numero.setPreferredSize(new Dimension(24, 20));
-		agregarEnFila(fila, numero, 0, 0);
+        // 1. Número
+        JLabel number = createLabel(String.valueOf(index + 1), Palette.TEXT_MUTED, Font.PLAIN, 11);
+        number.setPreferredSize(new Dimension(24, 20));
+        addToRow(row, number, 0, 0);
 
-		// 2. Icono de cancion
-		agregarEnFila(fila, crearIcono(), 1, 0);
+        // 2. Icono de la canción
+        addToRow(row, createIcon(), 1, 0);
 
-		// 3. Titulo, artista, album (se reparten el espacio sobrante)
-		agregarEnFila(fila, crearTexto(cancion[0], TEXTO, Font.BOLD, 13), 2, 3);
-		agregarEnFila(fila, crearTexto(cancion[1], TEXTO_SUAVE, Font.PLAIN, 12), 3, 2);
-		agregarEnFila(fila, crearTexto(cancion[2], TEXTO_SUAVE, Font.PLAIN, 12), 4, 2);
+        // 3. Título, artista y álbum (se reparten el espacio sobrante)
+        addToRow(row, createLabel(song[TITLE], Palette.TEXT, Font.BOLD, 13), 2, 3);
+        addToRow(row, createLabel(song[ARTIST], Palette.TEXT_MUTED, Font.PLAIN, 12), 3, 2);
+        addToRow(row, createLabel(song[ALBUM], Palette.TEXT_MUTED, Font.PLAIN, 12), 4, 2);
 
-		// 4. Etiqueta de genero
-		agregarEnFila(fila, crearEtiquetaGenero(cancion[3]), 5, 0);
+        // 4. Etiqueta del género
+        addToRow(row, createGenreTag(song[GENRE]), 5, 0);
 
-		// 5. Corazon + duracion
-		agregarEnFila(fila, crearTexto("♥", AMARILLO, Font.BOLD, 14), 6, 0);
-		agregarEnFila(fila, crearTexto(cancion[4], TEXTO_SUAVE, Font.PLAIN, 11), 7, 0);
+        // 5. Corazón y duración
+        addToRow(row, createLabel("♥", Palette.ACCENT, Font.BOLD, 14), 6, 0);
+        addToRow(row, createLabel(song[DURATION], Palette.TEXT_MUTED, Font.PLAIN, 11), 7, 0);
 
-		// 6. Boton quitar
-		MyButton quitar = new MyButton("Quitar de favoritos", TRANSPARENTE, TEXTO, TEXTO_SUAVE);
-		quitar.cambiarTamano(140, 28);
-		quitar.cambiarRedondeo(14);
-		quitar.cambiarFuente(Font.PLAIN, 11);
-		quitar.setActionCommand(String.valueOf(indice)); // el Presenter sabe cual fila fue
-		botonesQuitar.add(quitar);
-		agregarEnFila(fila, quitar, 8, 0);
+        // 6. Botón quitar
+        MyButton removeButton = new MyButton("Quitar de favoritos", Palette.TRANSPARENT, Palette.TEXT,
+                Palette.TEXT_MUTED);
+        removeButton.setFixedSize(140, 28);
+        removeButton.setCornerRadius(14);
+        removeButton.setFontStyle(Font.PLAIN, 11);
+        removeButton.setActionCommand(String.valueOf(index)); // así el Presenter sabe cuál fila fue
+        removeButtons.add(removeButton);
+        addToRow(row, removeButton, 8, 0);
 
-		return fila;
-	}
-	
-	/**
+        return row;
+    }
+
+    /**
+     * Agrega un componente a una fila en la columna indicada.
      *
-     * @param fila panel al que se agregará el componente
-     * @param componente elemento visual que se desea agregar
-     * @param columna posición horizontal del componente
-     * @param peso proporción de espacio horizontal que puede ocupar;
-     *             si es mayor que cero, el componente se expande horizontalmente
+     * @param row       panel al que se agrega el componente
+     * @param component componente que se desea agregar
+     * @param column    posición horizontal del componente
+     * @param weight    parte del espacio horizontal que puede ocupar; si es
+     *                  mayor que cero, el componente se estira a lo ancho
      */
+    private void addToRow(MyPanel row, Component component, int column, double weight) {
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.gridx = column;
+        constraints.gridy = 0;
+        constraints.weightx = weight;
+        constraints.anchor = GridBagConstraints.WEST;
+        constraints.fill = weight > 0 ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
+        constraints.insets = new Insets(0, 8, 0, 8);
+        row.add(component, constraints);
+    }
 
-	private void agregarEnFila(MyPanel fila, Component componente, int columna, double peso) {
-		GridBagConstraints gbc = new GridBagConstraints();
-		gbc.gridx = columna;
-		gbc.gridy = 0;
-		gbc.weightx = peso;
-		gbc.anchor = GridBagConstraints.WEST;
-		gbc.fill = peso > 0 ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
-		gbc.insets = new Insets(0, 8, 0, 8);
-		fila.add(componente, gbc);
-	}
-	   /**
-     * Crea una etiqueta de texto con el color, estilo y tamaño indicados.
+    /**
+     * Crea una etiqueta con el color, estilo y tamaño indicados.
      *
-     * @param texto contenido que mostrará la etiqueta
+     * @param text  texto de la etiqueta
      * @param color color del texto
-     * @param estilo estilo de fuente, por ejemplo 
-     * @param tamano tamaño de la fuente en puntos
+     * @param style estilo de la fuente, por ejemplo Font.BOLD
+     * @param size  tamaño de la fuente en puntos
      * @return etiqueta configurada
      */
-	private JLabel crearTexto(String texto, Color color, int estilo, int tamano) {
-		JLabel label = new JLabel(texto);
-		label.setForeground(color);
-		label.setFont(new Font("SansSerif", estilo, tamano));
-		return label;
-	}
+    private JLabel createLabel(String text, Color color, int style, int size) {
+        JLabel label = new JLabel(text);
+        label.setForeground(color);
+        label.setFont(new Font(Palette.FONT_FAMILY, style, size));
+        return label;
+    }
 
     /**
-     * Crea el recuadro decorativo que contiene el símbolo musical.
+     * Crea el recuadro decorativo con la nota musical.
      *
-     * @return panel que representa el icono de una canción
+     * @return panel que representa el icono de la canción
      */
-
-	private MyPanel crearIcono() {
-		MyPanel icono = new MyPanel();
-		icono.cambiarLayout(new GridBagLayout()); // centra el simbolo
-		icono.cambiarColor(CAJA_ICONO);
-		icono.cambiarRedondeo(8);
-		icono.setPreferredSize(new Dimension(34, 34));
-		icono.add(crearTexto("♪", AMARILLO, Font.BOLD, 14));
-		return icono;
-	}
-	
+    private MyPanel createIcon() {
+        MyPanel icon = new MyPanel();
+        icon.applyLayout(new GridBagLayout()); // centra el símbolo
+        icon.setBackgroundColor(ICON_BOX);
+        icon.setCornerRadius(8);
+        icon.setPreferredSize(new Dimension(34, 34));
+        icon.add(createLabel("♪", Palette.ACCENT, Font.BOLD, 14));
+        return icon;
+    }
 
     /**
-     * Crea una etiqueta visual para identificar el género musical.
+     * Crea la etiqueta que muestra el género musical.
      *
-     * @param genero nombre del género que se mostrará
-     * @return panel con el género musical
+     * @param genre nombre del género
+     * @return panel con el género
      */
-
-	private MyPanel crearEtiquetaGenero(String genero) {
-		MyPanel etiqueta = new MyPanel();
-		etiqueta.cambiarLayout(new FlowLayout(FlowLayout.CENTER, 10, 2));
-		etiqueta.cambiarColor(TRANSPARENTE);
-		etiqueta.cambiarRedondeo(9);
-		etiqueta.cambiarBorde(AMARILLO);
-		etiqueta.setPreferredSize(null); // que se ajuste al texto
-		etiqueta.add(crearTexto(genero, AMARILLO, Font.PLAIN, 10));
-		return etiqueta;
-	}
-
-
-
-	/** Cada String[] es {titulo, artista, album, genero, duracion}. */
+    private MyPanel createGenreTag(String genre) {
+        MyPanel tag = new MyPanel();
+        tag.applyLayout(new FlowLayout(FlowLayout.CENTER, 10, 2));
+        tag.setBackgroundColor(Palette.TRANSPARENT);
+        tag.setCornerRadius(9);
+        tag.setBorderColor(Palette.ACCENT);
+        tag.setPreferredSize(null); // se ajusta al texto
+        tag.add(createLabel(genre, Palette.ACCENT, Font.PLAIN, 10));
+        return tag;
+    }
 
     /**
-     * Actualiza la lista visual con las canciones favoritas recibidas.
+     * Actualiza la lista con las canciones favoritas recibidas.
      * <p>
-     * Elimina las filas anteriores, crea una nueva fila por canción,
-     * actualiza el contador y registra el listener de eliminación en los
-     * botones recién creados, si ya se había establecido.
+     * Borra las filas anteriores, crea una fila por canción, actualiza el contador
+     * y le pone el listener de quitar a los botones nuevos, si ya se había
+     * registrado.
      *
-     * @param canciones lista de canciones; cada elemento debe ser un arreglo
-     *                  con título, artista, álbum, género y duración
-     *//
-	public void mostrarFavoritos(List<String[]> canciones) {
-		lista.removeAll();
-		botonesQuitar.clear();
+     * @param songs lista de canciones; cada elemento es un arreglo con título, artista,
+     *              álbum, género y duración
+     */
+    public void showFavorites(List<String[]> songs) {
+        songList.removeAll();
+        removeButtons.clear();
 
-		for (int i = 0; i < canciones.size(); i++) {
-			lista.add(crearFila(canciones.get(i), i));
-			lista.add(Box.createVerticalStrut(6));
-		}
+        for (int i = 0; i < songs.size(); i++) {
+            songList.add(createRow(songs.get(i), i));
+            songList.add(Box.createVerticalStrut(6));
+        }
 
-		lblTitulo.setText("Favoritos · " + canciones.size());
+        titleLabel.setText(TITLE_PREFIX + songs.size());
 
-		// Los botones nuevos tambien deben escuchar
-		if (quitarListener != null) {
-			for (MyButton boton : botonesQuitar) {
-				boton.addActionListener(quitarListener);
-			}
-		}
+        // Los botones nuevos también deben escuchar
+        if (removeListener != null) {
+            for (MyButton button : removeButtons) {
+                button.addActionListener(removeListener);
+            }
+        }
 
-		lista.revalidate();
-		lista.repaint();
-	}
+        songList.revalidate();
+        songList.repaint();
+    }
 
- 	/** El actionCommand del boton es el indice de la fila (0, 1, 2...). */
+    /**
+     * Registra el listener de los botones "Quitar de favoritos". El comando de
+     * acción de cada botón es el índice de su fila (0, 1, 2...).
+     *
+     * @param listener listener que atiende los eventos de quitar; también se
+     *                 agrega a los botones que ya existen
+     */
+    public void addRemoveFavoriteListener(ActionListener listener) {
+        removeListener = listener;
+        for (MyButton button : removeButtons) {
+            button.addActionListener(listener);
+        }
+    }
 
-	    /**
-	     * Registra el listener que recibirá los eventos de los botones
-	     * "Quitar de favoritos".
-	     * <p>
-	     * El comando de acción de cada botón contiene el índice de su fila.
-	     *
-	     * @param listener listener que atenderá los eventos de eliminación;
-	     *                 puede ser registrado también para los botones actuales
-	     */
-	public void addRemoveFavoriteListener(ActionListener listener) {
-		quitarListener = listener;
-		for (MyButton boton : botonesQuitar) {
-			boton.addActionListener(listener);
-		}
-	}
+    /**
+     * Registra el listener del botón "Reproducir todo".
+     *
+     * @param listener listener que atiende el evento
+     */
+    public void addPlayAllListener(ActionListener listener) {
+        playAllButton.addActionListener(listener);
+    }
 
-	public void addPlayAllListener(ActionListener listener) {
-		btnReproducirTodo.addActionListener(listener);
-	}
-
-	// Datos de ejemplo, luego los reemplaza el Presenter con mostrarFavoritos(...)
-	private void cargarDatosDePrueba() {
-		List<String[]> datos = new ArrayList<>();
-		datos.add(new String[] { "Amanecer", "Los Cantores", "Horizonte", "Pop", "3:41" });
-		datos.add(new String[] { "Noches de Neón", "Vera Luz", "Ciudad", "Electrónica", "3:42" });
-		datos.add(new String[] { "Camino Largo", "Mateo Rivas", "Raíces", "Folk", "3:43" });
-		datos.add(new String[] { "Fuego Lento", "Dúo Ámbar", "Brasas", "Rock", "3:44" });
-		datos.add(new String[] { "Marea", "Sol y Sal", "Costa", "Indie", "3:45" });
-		mostrarFavoritos(datos);
-	}
+    /** Datos de prueba. Luego el Presenter los reemplaza llamando a showFavorites. */
+    private void loadSampleData() {
+        List<String[]> samples = new ArrayList<>();
+        samples.add(new String[] { "Amanecer", "Los Cantores", "Horizonte", "Pop", "3:41" });
+        samples.add(new String[] { "Noches de Neón", "Vera Luz", "Ciudad", "Electrónica", "3:42" });
+        samples.add(new String[] { "Camino Largo", "Mateo Rivas", "Raíces", "Folk", "3:43" });
+        samples.add(new String[] { "Fuego Lento", "Dúo Ámbar", "Brasas", "Rock", "3:44" });
+        samples.add(new String[] { "Marea", "Sol y Sal", "Costa", "Indie", "3:45" });
+        showFavorites(samples);
+    }
 }

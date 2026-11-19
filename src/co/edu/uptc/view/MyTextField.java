@@ -1,37 +1,51 @@
 package co.edu.uptc.view;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 
+import javax.swing.BorderFactory;
+import javax.swing.JPasswordField;
+
 /**
- * Campo de texto personalizado: fondo redondeado y texto de ayuda (placeholder).
- * Si esClave es true oculta lo que se escribe (como una contraseña).
+ * Campo de texto con fondo redondeado y texto de ayuda (placeholder). Si
+ * isPassword es true, oculta lo que se escribe.
  */
 public class MyTextField extends JPasswordField {
 
     private String placeholder;
-    private Color colorFondo = new Color(38, 38, 38);
-    private Color colorBorde = new Color(52, 52, 52);
-    private Color colorBordeFoco = new Color(255, 193, 7);
-    private Color colorPlaceholder = new Color(150, 150, 150);
-    private int radio = 8;
+    private Color backgroundColor = Palette.FIELD;
+    private Color borderColor = Palette.FIELD_BORDER;
+    private Color focusBorderColor = Palette.ACCENT;
+    private Color placeholderColor = Palette.TEXT_MUTED;
+    private int cornerRadius = 8;
 
-    public MyTextField(String placeholder, boolean esClave) {
+    /**
+     * Crea un campo de texto.
+     *
+     * @param placeholder texto que se ve mientras el campo está vacío
+     * @param isPassword  true para ocultar lo que se escribe
+     */
+    public MyTextField(String placeholder, boolean isPassword) {
         this.placeholder = placeholder;
 
-        if (!esClave) {
+        if (!isPassword) {
             setEchoChar((char) 0); // 0 = mostrar el texto normal
         }
 
         setOpaque(false);
-        setForeground(new Color(235, 235, 235));
-        setCaretColor(new Color(235, 235, 235));
-        setFont(new Font("SansSerif", Font.PLAIN, 12));
-        setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12)); // margen interno
+        setForeground(Palette.TEXT);
+        setCaretColor(Palette.TEXT);
+        setFont(new Font(Palette.FONT_FAMILY, Font.PLAIN, 12));
+        setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
 
-        // Para que el borde cambie de color al entrar/salir del campo
+        // Se vuelve a pintar para que el borde cambie de color al entrar o salir del campo
         addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
@@ -45,32 +59,49 @@ public class MyTextField extends JPasswordField {
         });
     }
 
-    // Devuelve lo escrito (sirve para campo normal y de clave)
-    public String getTexto() {
+    /**
+     * Obtiene lo escrito. Sirve para campos normales y de contraseña.
+     *
+     * @return texto escrito
+     */
+    public String getValue() {
         return new String(getPassword());
     }
 
-    public void limpiar() {
+    public void clear() {
         setText("");
     }
 
-    public void cambiarColores(Color fondo, Color borde, Color bordeFoco) {
-        this.colorFondo = fondo;
-        this.colorBorde = borde;
-        this.colorBordeFoco = bordeFoco;
+    /**
+     * Cambia los colores del campo.
+     *
+     * @param background  color de fondo
+     * @param border      color del borde
+     * @param focusBorder color del borde mientras el campo está seleccionado
+     */
+    public void setColors(Color background, Color border, Color focusBorder) {
+        this.backgroundColor = background;
+        this.borderColor = border;
+        this.focusBorderColor = focusBorder;
         repaint();
     }
 
-    public void cambiarRedondeo(int radio) {
-        this.radio = radio;
+    public void setCornerRadius(int cornerRadius) {
+        this.cornerRadius = cornerRadius;
         repaint();
     }
 
-    public void cambiarTamano(int ancho, int alto) {
-        Dimension d = new Dimension(ancho, alto);
-        setPreferredSize(d);
-        setMinimumSize(d);
-        setMaximumSize(d);
+    /**
+     * Le da al campo un tamaño fijo (preferido, mínimo y máximo).
+     *
+     * @param width  ancho en píxeles
+     * @param height alto en píxeles
+     */
+    public void setFixedSize(int width, int height) {
+        Dimension size = new Dimension(width, height);
+        setPreferredSize(size);
+        setMinimumSize(size);
+        setMaximumSize(size);
         revalidate();
     }
 
@@ -80,25 +111,21 @@ public class MyTextField extends JPasswordField {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        int arco = radio * 2;
-        g2.setColor(colorFondo);
-        g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arco, arco);
+        int arc = cornerRadius * 2;
+        g2.setColor(backgroundColor);
+        g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
 
-        if (hasFocus()) {
-            g2.setColor(colorBordeFoco);
-        } else {
-            g2.setColor(colorBorde);
-        }
-        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arco, arco);
+        g2.setColor(hasFocus() ? focusBorderColor : borderColor);
+        g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
 
         super.paintComponent(g2); // dibuja el texto escrito
 
-        // Placeholder: solo si el campo esta vacio
+        // Placeholder: solo si el campo está vacío
         if (getPassword().length == 0) {
-            g2.setColor(colorPlaceholder);
+            g2.setColor(placeholderColor);
             g2.setFont(getFont());
-            FontMetrics fm = g2.getFontMetrics();
-            int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+            FontMetrics metrics = g2.getFontMetrics();
+            int y = (getHeight() - metrics.getHeight()) / 2 + metrics.getAscent();
             g2.drawString(placeholder, getInsets().left, y);
         }
         g2.dispose();
