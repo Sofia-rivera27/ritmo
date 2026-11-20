@@ -1,11 +1,12 @@
 package co.edu.uptc.model;
 
 import java.io.File;
+import java.util.Objects;
 
 /**
  * Canción con sus datos, la ruta de su archivo de audio y si está marcada
  * como favorita. Dos canciones son iguales si tienen el mismo título y
- * artista (sin importar mayúsculas).
+ * artista (sin importar mayúsculas ni espacios extra).
  */
 public class Song {
 
@@ -31,10 +32,10 @@ public class Song {
      */
     public Song(String title, String artist, String album, String genre, File albumImage, double duration,
             String filePath) {
-        this.title = title;
-        this.artist = artist;
-        this.album = album;
-        this.genre = genre;
+        this.title = SongValidator.clean(title);
+        this.artist = SongValidator.cleanOrDefault(artist, SongValidator.DEFAULT_ARTIST);
+        this.album = SongValidator.cleanOrDefault(album, SongValidator.DEFAULT_ALBUM);
+        this.genre = SongValidator.clean(genre);
         this.albumImage = albumImage;
         this.duration = duration;
         this.filePath = filePath;
@@ -52,7 +53,8 @@ public class Song {
      * @param duration       duración en segundos
      */
     public Song(String title, String artist, String album, String genre, String albumImagePath, double duration) {
-        this(title, artist, album, genre, new File(albumImagePath), duration, null);
+        this(title, artist, album, genre,
+                SongValidator.clean(albumImagePath).isEmpty() ? null : new File(albumImagePath.trim()), duration, null);
     }
 
     public String getTitle() {
@@ -60,7 +62,7 @@ public class Song {
     }
 
     public void setTitle(String title) {
-        this.title = title;
+        this.title = SongValidator.clean(title);
     }
 
     public String getArtist() {
@@ -68,7 +70,7 @@ public class Song {
     }
 
     public void setArtist(String artist) {
-        this.artist = artist;
+        this.artist = SongValidator.cleanOrDefault(artist, SongValidator.DEFAULT_ARTIST);
     }
 
     public String getAlbum() {
@@ -76,7 +78,7 @@ public class Song {
     }
 
     public void setAlbum(String album) {
-        this.album = album;
+        this.album = SongValidator.cleanOrDefault(album, SongValidator.DEFAULT_ALBUM);
     }
 
     public String getGenre() {
@@ -84,7 +86,7 @@ public class Song {
     }
 
     public void setGenre(String genre) {
-        this.genre = genre;
+        this.genre = SongValidator.clean(genre);
     }
 
     public File getAlbumImage() {
@@ -128,12 +130,13 @@ public class Song {
             return false;
         }
         Song other = (Song) obj;
-        return title.equalsIgnoreCase(other.title) && artist.equalsIgnoreCase(other.artist);
+        return SongValidator.normalize(title).equals(SongValidator.normalize(other.title))
+                && SongValidator.normalize(artist).equals(SongValidator.normalize(other.artist));
     }
 
     @Override
     public int hashCode() {
-        return (title.toLowerCase() + artist.toLowerCase()).hashCode();
+        return Objects.hash(SongValidator.normalize(title), SongValidator.normalize(artist));
     }
 
     @Override

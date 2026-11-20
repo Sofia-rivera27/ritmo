@@ -24,7 +24,7 @@ import javafx.scene.media.MediaPlayer;
 public class Model implements IModel {
 
     private static final String MP3_EXTENSION = ".mp3";
-    /** Se le muestra al usuario cuando la canción no tiene artista, álbum o género. */
+    /** Se le muestra al usuario cuando la canción no tiene género. */
     private static final String UNKNOWN = "Desconocido";
     private static final int LOAD_TIMEOUT_SECONDS = 10;
 
@@ -32,9 +32,12 @@ public class Model implements IModel {
 
     private MediaPlayer loadingPlayer;
     private List<Song> songs;
+    /** Carpetas autorizadas para escanear. Si está vacía, no hay restricción. */
+    private List<File> authorizedFolders;
 
     public Model() {
         songs = new ArrayList<>();
+        authorizedFolders = new ArrayList<>();
     }
 
     /**
@@ -42,13 +45,12 @@ public class Model implements IModel {
      * y lee sus metadatos.
      *
      * @param folder carpeta que se desea revisar
-     * @return canciones encontradas, o una lista vacía si la carpeta no es válida
+     * @return canciones encontradas
+     * @throws IllegalArgumentException si la carpeta no es un directorio válido o no está autorizada
      */
     @Override
     public List<Song> detectMp3InFolder(File folder) {
-        if (folder == null || !folder.isDirectory()) {
-            return new ArrayList<>();
-        }
+        SongValidator.validateFolder(folder, authorizedFolders);
         List<File> candidates = new ArrayList<>();
         try (Stream<Path> paths = Files.walk(folder.toPath())) {
             paths.map(Path::toFile).filter(this::hasMp3Extension).forEach(candidates::add);
@@ -85,7 +87,7 @@ public class Model implements IModel {
     }
 
     private boolean hasMp3Extension(File file) {
-        return file != null && file.isFile() && file.getName().toLowerCase().endsWith(MP3_EXTENSION);
+        return SongValidator.isMp3File(file);
     }
 
     private void checkNotFxThread() {
@@ -144,12 +146,12 @@ public class Model implements IModel {
         String fileTitle = fileName.substring(0, fileName.length() - MP3_EXTENSION.length());
 
         double seconds = media.getDuration().toSeconds();
-        if (Double.isNaN(seconds) || Double.isInfinite(seconds)) {
+        if (Double.isNaN(seconds) || Double.isInfinite(seconds) || seconds < 0) {
             seconds = 0;
         }
         return new Song(textOrDefault(metadata.get("title"), fileTitle),
-                textOrDefault(metadata.get("artist"), UNKNOWN),
-                textOrDefault(metadata.get("album"), UNKNOWN),
+                textOrDefault(metadata.get("artist"), SongValidator.DEFAULT_ARTIST),
+                textOrDefault(metadata.get("album"), SongValidator.DEFAULT_ALBUM),
                 textOrDefault(metadata.get("genre"), UNKNOWN),
                 null, seconds, file.getAbsolutePath());
     }
@@ -166,14 +168,81 @@ public class Model implements IModel {
         return songs;
     }
 
+    /**
+     * Agrega una canción a la biblioteca después de validarla: título, género,
+     * archivo .mp3, portada, duración y que no esté repetida.
+     *
+     * @param song canción que se desea agregar
+     * @throws IllegalArgumentException si algún dato no es válido o la canción ya existe
+     */
     @Override
     public void addSong(Song song) {
+        SongValidator.validateSong(song);
+        SongValidator.validateNotDuplicate(song, songs);
         songs.add(song);
     }
 
+    /**
+     * Quita una canción de la biblioteca, siempre que exista en ella.
+     *
+     * @param song canción que se desea eliminar
+     * @throws IllegalArgumentException si la canción es nula o no está en la biblioteca
+     */
     @Override
     public void removeSong(Song song) {
+        if (song == null || !songs.contains(song)) {
+            throw new IllegalArgumentException(SongValidator.MSG_NOT_FOUND);
+        }
         songs.remove(song);
+    }
+
+    /**
+     * Edita los datos de una canción de la biblioteca. Si algo no es válido no
+     * se cambia nada.
+     *
+     * @param song       canción que se desea editar
+     * @param title      nuevo título
+     * @param artist     nuevo artista (si está vacío queda "Desconocido")
+     * @param album      nuevo álbum (si está vacío queda "Sin álbum")
+     * @param genre      nuevo género
+     * @param albumImage nueva portada, o null si no tiene
+     * @throws IllegalArgumentException si algún dato no es válido o ya existe otra canción con ese título y artista
+     */
+    @Override
+    public void updateSong(Song song, String title, String artist, String album, String genre, File albumImage) {
+        int index = (song == null) ? -1 : songs.indexOf(song);
+        if (index < 0) {
+            throw new IllegalArgumentException(SongValidator.MSG_NOT_FOUND);
+        }
+        Song target = songs.get(index);
+
+        String newTitle = SongValidator.clean(title);
+        String newArtist = SongValidator.cleanOrDefault(artist, SongValidator.DEFAULT_ARTIST);
+        SongValidator.validateTitle(newTitle);
+        SongValidator.validateGenre(genre);
+        SongValidator.validateAlbumImage(albumImage);
+        SongValidator.validateNotDuplicateOnEdit(target, newTitle, newArtist, songs);
+
+        target.setTitle(newTitle);
+        target.setArtist(newArtist);
+        target.setAlbum(album);
+        target.setGenre(genre);
+        target.setAlbumImage(albumImage);
+    }
+
+    /**
+     * Autoriza una carpeta para escanear canciones. Desde que hay al menos una
+     * carpeta autorizada, solo se pueden escanear esas carpetas y sus subcarpetas.
+     *
+     * @param folder carpeta que se desea autorizar
+     * @throws IllegalArgumentException si no es un directorio válido
+     */
+    @Override
+    public void authorizeFolder(File folder) {
+        SongValidator.validateFolder(folder, new ArrayList<>());
+        if (!authorizedFolders.contains(folder)) {
+            authorizedFolders.add(folder);
+        }
     }
 
     /**
