@@ -18,5 +18,9 @@ public interface IModel {
 
     void removeSong(Song song);
 
+    void updateSong(Song song, String title, String artist, String album, String genre, File albumImage);
+
+    void authorizeFolder(File folder);
+
     List<Song> searchSongs(String text, SearchCriteria criteria);
 }

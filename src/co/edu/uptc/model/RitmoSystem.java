@@ -174,7 +174,11 @@ public class RitmoSystem extends Model {
                 }
 
                 // La duración y la ruta todavía no se guardan en el JSON, por eso se usan 0.0 y null
-                playList.addSong(new Song(title, artist, album, genre, imageFile, 0.0, null));
+                try {
+                    playList.addSong(new Song(title, artist, album, genre, imageFile, 0.0, null));
+                } catch (IllegalArgumentException e) {
+                    // Canción repetida en un JSON antiguo: se ignora para que la carga no falle
+                }
             }
 
             library.getPlaylists().put(playlistName, playList);

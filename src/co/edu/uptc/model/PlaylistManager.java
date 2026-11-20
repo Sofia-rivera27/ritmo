@@ -21,17 +21,19 @@ public class PlaylistManager {
     }
 
     /**
-     * Crea una lista de reproducción si no existe otra con el mismo nombre.
+     * Crea una lista de reproducción. El nombre no puede estar vacío, tener más
+     * de 60 caracteres ni coincidir con el de otra lista.
      *
      * @param name nombre de la nueva lista de reproducción
+     * @return la lista creada
+     * @throws IllegalArgumentException si el nombre no es válido o ya existe
      */
-    public void createPlayList(String name) {
-        for (PlayList playList : playLists) {
-            if (playList.getName().equals(name)) {
-                return;
-            }
-        }
-        playLists.add(new PlayList(name));
+    public PlayList createPlayList(String name) {
+        String cleanName = PlaylistValidator.validateName(name);
+        PlaylistValidator.validateNameAvailable(cleanName, playLists, null);
+        PlayList playList = new PlayList(cleanName);
+        playLists.add(playList);
+        return playList;
     }
 
     /**
@@ -39,23 +41,70 @@ public class PlaylistManager {
      *
      * @param oldName nombre actual de la lista
      * @param newName nuevo nombre que se asigna
+     * @throws IllegalArgumentException si la lista no existe o el nombre nuevo no es válido o ya existe
      */
     public void renamePlayList(String oldName, String newName) {
-        for (PlayList playList : playLists) {
-            if (playList.getName().equals(oldName)) {
-                playList.setName(newName);
-                return;
-            }
-        }
+        PlayList playList = findPlayList(oldName);
+        PlaylistValidator.validateExists(playList);
+        String cleanName = PlaylistValidator.validateName(newName);
+        PlaylistValidator.validateNameAvailable(cleanName, playLists, playList);
+        playList.setName(cleanName);
     }
 
     /**
-     * Elimina las listas de reproducción que coincidan con el nombre.
+     * Elimina la lista de reproducción con ese nombre.
      *
      * @param name nombre de la lista que se desea eliminar
+     * @throws IllegalArgumentException si la lista no existe
      */
     public void deletePlayList(String name) {
-        playLists.removeIf(playList -> playList.getName().equals(name));
+        PlayList playList = findPlayList(name);
+        PlaylistValidator.validateExists(playList);
+        playLists.remove(playList);
+    }
+
+    /**
+     * Agrega una canción a una lista de reproducción.
+     *
+     * @param playListName nombre de la lista destino
+     * @param song         canción que se desea agregar
+     * @throws IllegalArgumentException si la lista o la canción no existen, o la canción ya está en la lista
+     */
+    public void addSongToPlayList(String playListName, Song song) {
+        findOrFail(playListName).addSong(song);
+    }
+
+    /**
+     * Quita una canción de una lista de reproducción, sin eliminarla de la biblioteca.
+     *
+     * @param playListName nombre de la lista
+     * @param song         canción que se desea quitar
+     * @throws IllegalArgumentException si la lista o la canción no existen, o la canción no está en la lista
+     */
+    public void removeSongFromPlayList(String playListName, Song song) {
+        findOrFail(playListName).removeSong(song);
+    }
+
+    /**
+     * Busca una lista por nombre, sin importar mayúsculas ni espacios extra.
+     *
+     * @param name nombre de la lista
+     * @return la lista, o null si no existe
+     */
+    public PlayList findPlayList(String name) {
+        String normalized = SongValidator.normalize(name);
+        for (PlayList playList : playLists) {
+            if (SongValidator.normalize(playList.getName()).equals(normalized)) {
+                return playList;
+            }
+        }
+        return null;
+    }
+
+    private PlayList findOrFail(String name) {
+        PlayList playList = findPlayList(name);
+        PlaylistValidator.validateExists(playList);
+        return playList;
     }
 
     public List<PlayList> getPlayLists() {
