@@ -49,7 +49,7 @@ public class ViewFrame extends JFrame {
         registerSection(LIBRARY, new SectionPanel("Biblioteca"), mainPanel.getLibraryButton());
         registerSection(FAVORITES, new FavoritesPanel(), mainPanel.getFavoritesButton());
         registerSection(PLAYLISTS, new SectionPanel("Playlists"), mainPanel.getPlaylistsButton());
-        registerSection(HISTORY, new SectionPanel("Historial"), mainPanel.getHistoryButton());
+        registerSection(HISTORY, new HistoryPanel(), mainPanel.getHistoryButton());
         registerSection(SETTINGS, new SectionPanel("Configuración"), mainPanel.getSettingsButton());
 
         showSection(HOME);
@@ -95,5 +95,9 @@ public class ViewFrame extends JFrame {
 
     public FavoritesPanel getFavoritesPanel() {
         return (FavoritesPanel) sectionPanels.get(FAVORITES);
+    }
+
+    public HistoryPanel getHistoryPanel() {
+        return (HistoryPanel) sectionPanels.get(HISTORY);
     }
 }

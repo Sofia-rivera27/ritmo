@@ -46,7 +46,8 @@ public class Model implements IModel {
      *
      * @param folder carpeta que se desea revisar
      * @return canciones encontradas
-     * @throws IllegalArgumentException si la carpeta no es un directorio válido o no está autorizada
+     * @throws IllegalArgumentException si la carpeta no es un directorio válido o
+     *                                  no está autorizada
      */
     @Override
     public List<Song> detectMp3InFolder(File folder) {
@@ -173,7 +174,8 @@ public class Model implements IModel {
      * archivo .mp3, portada, duración y que no esté repetida.
      *
      * @param song canción que se desea agregar
-     * @throws IllegalArgumentException si algún dato no es válido o la canción ya existe
+     * @throws IllegalArgumentException si algún dato no es válido o la canción ya
+     *                                  existe
      */
     @Override
     public void addSong(Song song) {
@@ -186,7 +188,8 @@ public class Model implements IModel {
      * Quita una canción de la biblioteca, siempre que exista en ella.
      *
      * @param song canción que se desea eliminar
-     * @throws IllegalArgumentException si la canción es nula o no está en la biblioteca
+     * @throws IllegalArgumentException si la canción es nula o no está en la
+     *                                  biblioteca
      */
     @Override
     public void removeSong(Song song) {
@@ -206,7 +209,8 @@ public class Model implements IModel {
      * @param album      nuevo álbum (si está vacío queda "Sin álbum")
      * @param genre      nuevo género
      * @param albumImage nueva portada, o null si no tiene
-     * @throws IllegalArgumentException si algún dato no es válido o ya existe otra canción con ese título y artista
+     * @throws IllegalArgumentException si algún dato no es válido o ya existe otra
+     *                                  canción con ese título y artista
      */
     @Override
     public void updateSong(Song song, String title, String artist, String album, String genre, File albumImage) {

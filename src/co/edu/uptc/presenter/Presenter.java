@@ -3,6 +3,9 @@ package co.edu.uptc.presenter;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +16,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import co.edu.uptc.model.AudioPlayer;
 import co.edu.uptc.model.FavoritesManager;
+import co.edu.uptc.model.HistoryEntry;
+import co.edu.uptc.model.HistoryManager;
 import co.edu.uptc.model.JamendoService;
 import co.edu.uptc.model.PersistenceManager;
 import co.edu.uptc.model.PlayList;
@@ -23,6 +28,7 @@ import co.edu.uptc.model.Song;
 import co.edu.uptc.model.UserStore;
 import co.edu.uptc.view.ExplorePanel;
 import co.edu.uptc.view.FavoritesPanel;
+import co.edu.uptc.view.HistoryPanel;
 import co.edu.uptc.view.ViewFrame;
 
 /**
@@ -30,6 +36,9 @@ import co.edu.uptc.view.ViewFrame;
  * cola y gestión de favoritos y playlists.
  */
 public class Presenter implements ActionListener {
+
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ViewFrame frame;
     private final RitmoSystem ritmoSystem;
@@ -40,7 +49,9 @@ public class Presenter implements ActionListener {
     private final AudioPlayer audioPlayer = new AudioPlayer();
     private final FavoritesManager favoritesManager = new FavoritesManager();
     private final PlaylistManager playlistManager = new PlaylistManager();
-    // Los botones de resultados envían índices; esta lista conserva su correspondencia.
+    private final HistoryManager historyManager = new HistoryManager();
+    // Los botones de resultados envían índices; esta lista conserva su
+    // correspondencia.
     private final List<Song> shownSongs = new ArrayList<>();
 
     public Presenter() {
@@ -49,15 +60,17 @@ public class Presenter implements ActionListener {
         userStore = new UserStore();
         persistenceManager = new PersistenceManager(userStore, ritmoSystem);
 
-        // Centraliza aquí las conexiones para que las vistas no accedan directamente al modelo.
+        // Centraliza aquí las conexiones para que las vistas no accedan directamente al
+        // modelo.
         frame.addMenuListener(this);
         wirePlaybackControls();
         wireExplore();
         wireFavorites();
-        // La reproducción avisa al presentador para mostrar errores y avanzar al terminar.
-        audioPlayer.setErrorListener(message ->
-                SwingUtilities.invokeLater(() -> frame.getExplorePanel()
-                        .setStatus("Error de reproduccion: " + message)));
+        wireHistory();
+        // La reproducción avisa al presentador para mostrar errores y avanzar al
+        // terminar.
+        audioPlayer.setErrorListener(message -> SwingUtilities.invokeLater(() -> frame.getExplorePanel()
+                .setStatus("Error de reproduccion: " + message)));
         audioPlayer.setEndListener(() -> SwingUtilities.invokeLater(this::playNext));
         frame.setVisible(true);
     }
@@ -77,14 +90,15 @@ public class Presenter implements ActionListener {
         });
         frame.getMainPanel().getNextButton().addActionListener(event -> playNext());
         frame.getMainPanel().getPreviousButton().addActionListener(event -> playPrevious());
-        frame.getMainPanel().getQueueButton().addActionListener(event ->
-                frame.getExplorePanel().showQueueDialog(queueRows(),
+        frame.getMainPanel().getQueueButton()
+                .addActionListener(event -> frame.getExplorePanel().showQueueDialog(queueRows(),
                         index -> removeFromQueue(index, frame.getExplorePanel())));
         updateQueueControls();
     }
 
     private void wireExplore() {
-        // Traduce las acciones de Explorar en búsquedas y operaciones sobre cada canción.
+        // Traduce las acciones de Explorar en búsquedas y operaciones sobre cada
+        // canción.
         ExplorePanel panel = frame.getExplorePanel();
         panel.addSearchListener(event -> searchJamendo(panel));
         panel.addMp3Listener(event -> selectMp3Files(panel));
@@ -116,7 +130,8 @@ public class Presenter implements ActionListener {
     }
 
     private void wireFavorites() {
-        // Mantiene la lista de favoritos actualizada y permite reproducirla como una cola.
+        // Mantiene la lista de favoritos actualizada y permite reproducirla como una
+        // cola.
         FavoritesPanel panel = frame.getFavoritesPanel();
         panel.showFavorites(favoriteRows());
         panel.addRemoveFavoriteListener(event -> {
@@ -139,6 +154,31 @@ public class Presenter implements ActionListener {
             }
             updateQueueControls();
             playCurrent();
+        });
+    }
+
+    private void wireHistory() {
+        // Permite volver a reproducir una canción del historial o borrarlo completo.
+        HistoryPanel panel = frame.getHistoryPanel();
+        panel.addPlayListener(event -> {
+            int index;
+            try {
+                index = Integer.parseInt(event.getActionCommand());
+            } catch (NumberFormatException e) {
+                return;
+            }
+            Song song = historyManager.getSongAt(index);
+            if (song != null) {
+                addToQueue(song, frame.getExplorePanel(), true);
+            }
+        });
+        panel.addClearListener(event -> {
+            int answer = JOptionPane.showConfirmDialog(frame, "¿Seguro que quieres borrar el historial?",
+                    "Borrar historial", JOptionPane.YES_NO_OPTION);
+            if (answer == JOptionPane.YES_OPTION) {
+                historyManager.clear();
+                refreshHistory();
+            }
         });
     }
 
@@ -185,7 +225,8 @@ public class Presenter implements ActionListener {
         }
         List<File> selected = List.of(files);
         panel.setStatus("Leyendo archivos MP3...");
-        // La lectura de metadatos también ocurre en segundo plano para mantener la interfaz activa.
+        // La lectura de metadatos también ocurre en segundo plano para mantener la
+        // interfaz activa.
         new Thread(() -> {
             List<Song> found = ritmoSystem.detectMp3(selected);
             for (Song song : found) {
@@ -198,7 +239,8 @@ public class Presenter implements ActionListener {
     }
 
     private void showSongs(ExplorePanel panel, List<Song> songs, String title, String message) {
-        // Guarda el mismo orden que la vista usa para resolver los índices de sus acciones.
+        // Guarda el mismo orden que la vista usa para resolver los índices de sus
+        // acciones.
         shownSongs.clear();
         shownSongs.addAll(songs);
         panel.showResults(songs, title);
@@ -221,7 +263,8 @@ public class Presenter implements ActionListener {
     }
 
     private void addToQueue(Song song, ExplorePanel panel, boolean playNow) {
-        // Valida la pista antes de añadirla y permite iniciar inmediatamente la seleccionada.
+        // Valida la pista antes de añadirla y permite iniciar inmediatamente la
+        // seleccionada.
         if (!playbackQueue.add(song)) {
             panel.setStatus("No se pudo agregar: se requiere una URL o un archivo MP3 valido.");
             return;
@@ -238,7 +281,8 @@ public class Presenter implements ActionListener {
     }
 
     private void removeFromQueue(int index, ExplorePanel panel) {
-        // Si se quita la pista activa, detiene el reproductor y pasa a la nueva pista actual.
+        // Si se quita la pista activa, detiene el reproductor y pasa a la nueva pista
+        // actual.
         boolean removedCurrent = index == playbackQueue.getCurrentIndex();
         if (!playbackQueue.remove(index)) {
             panel.setStatus("Seleccion de cola invalida.");
@@ -260,7 +304,8 @@ public class Presenter implements ActionListener {
     }
 
     private void playCurrent() {
-        // Sincroniza el reproductor, el estado visual y el mensaje de la pista seleccionada.
+        // Sincroniza el reproductor, el estado visual y el mensaje de la pista
+        // seleccionada.
         Song song = playbackQueue.getCurrent();
         if (song == null) {
             audioPlayer.stop();
@@ -271,6 +316,8 @@ public class Presenter implements ActionListener {
         }
         try {
             audioPlayer.play(song);
+            historyManager.addPlayed(song);
+            refreshHistory();
             frame.getExplorePanel().setStatus("Reproduciendo: " + song.getTitle()
                     + " - " + song.getArtist());
             frame.getMainPanel().getPlayPauseButton().setText("⏸");
@@ -346,7 +393,8 @@ public class Presenter implements ActionListener {
     }
 
     private void refreshFavorites() {
-        // Refleja los cambios en Favoritos y actualiza los corazones de los resultados visibles.
+        // Refleja los cambios en Favoritos y actualiza los corazones de los resultados
+        // visibles.
         frame.getFavoritesPanel().showFavorites(favoriteRows());
         ExplorePanel explore = frame.getExplorePanel();
         for (int i = 0; i < shownSongs.size(); i++) {
@@ -362,6 +410,31 @@ public class Presenter implements ActionListener {
                     song.getGenre(), String.format("%d:%02d", seconds / 60, seconds % 60) });
         }
         return rows;
+    }
+
+    private void refreshHistory() {
+        frame.getHistoryPanel().showHistory(historyRows());
+    }
+
+    private List<String[]> historyRows() {
+        List<String[]> rows = new ArrayList<>();
+        for (HistoryEntry entry : historyManager.getEntries()) {
+            Song song = entry.getSong();
+            rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(),
+                    formatPlayedAt(entry.getPlayedAt()) });
+        }
+        return rows;
+    }
+
+    /**
+     * Muestra solo la hora si la canción sonó hoy; si no, la fecha y la hora.
+     */
+    private String formatPlayedAt(LocalDateTime playedAt) {
+        String time = playedAt.format(TIME_FORMAT);
+        if (playedAt.toLocalDate().equals(LocalDate.now())) {
+            return "Hoy, " + time;
+        }
+        return playedAt.format(DATE_FORMAT) + ", " + time;
     }
 
     @Override
