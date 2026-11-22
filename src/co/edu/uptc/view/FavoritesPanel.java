@@ -27,7 +27,7 @@ import javax.swing.JTextField;
  * Muestra la información y avisa las acciones del usuario mediante listeners,
  * pero no tiene la lógica para eliminar ni reproducir canciones.
  *
- * @author SofiaValentinaG
+ * 
  */
 public class FavoritesPanel extends MyPanel {
 

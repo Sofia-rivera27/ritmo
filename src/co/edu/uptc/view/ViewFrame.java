@@ -1,3 +1,4 @@
+
 package co.edu.uptc.view;
 
 import java.awt.BorderLayout;
@@ -24,11 +25,18 @@ public class ViewFrame extends JFrame {
 
     private MainPanel mainPanel;
 
+    private boolean lightTheme =
+            SettingsPanel.loadThemePreference();
+
     /** Panel y botón del menú de cada sección, según su comando de acción. */
-    private final Map<String, MyPanel> sectionPanels = new LinkedHashMap<>();
-    private final Map<String, MyButton> sectionButtons = new LinkedHashMap<>();
+    private final Map<String, MyPanel> sectionPanels =
+            new LinkedHashMap<>();
+
+    private final Map<String, MyButton> sectionButtons =
+            new LinkedHashMap<>();
 
     public ViewFrame() {
+
         super("Aplicacion Musica");
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -36,57 +44,136 @@ public class ViewFrame extends JFrame {
         setLocationRelativeTo(null);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
 
-        getContentPane().setBackground(Palette.WINDOW_BACKGROUND);
-        getContentPane().setLayout(new BorderLayout());
+        getContentPane().setBackground(
+                Palette.WINDOW_BACKGROUND);
+
+        getContentPane().setLayout(
+                new BorderLayout());
 
         mainPanel = new MainPanel();
-        getContentPane().add(mainPanel, BorderLayout.CENTER);
 
-        // Paneles provisionales (SectionPanel) hasta que se diseñe cada sección
-        registerSection(HOME, new HomePanel(), mainPanel.getHomeButton());
-        // Explorar concentra la búsqueda, los filtros y los resultados de Jamendo.
-        registerSection(EXPLORE, new ExplorePanel(), mainPanel.getExploreButton());
-        registerSection(LIBRARY, new SectionPanel("Biblioteca"), mainPanel.getLibraryButton());
-        registerSection(FAVORITES, new FavoritesPanel(), mainPanel.getFavoritesButton());
-        registerSection(PLAYLISTS, new SectionPanel("Playlists"), mainPanel.getPlaylistsButton());
-        registerSection(HISTORY, new HistoryPanel(), mainPanel.getHistoryButton());
-        registerSection(SETTINGS, new SectionPanel("Configuración"), mainPanel.getSettingsButton());
+        getContentPane().add(
+                mainPanel, BorderLayout.CENTER);
+
+        // Paneles provisionales (SectionPanel)
+        // hasta que se diseñe cada sección
+
+        registerSection(
+                HOME,
+                new HomePanel(),
+                mainPanel.getHomeButton());
+
+        // Explorar concentra la búsqueda,
+        // los filtros y los resultados de Jamendo.
+        registerSection(
+                EXPLORE,
+                new ExplorePanel(),
+                mainPanel.getExploreButton());
+
+        registerSection(
+                LIBRARY,
+                new SectionPanel("Biblioteca"),
+                mainPanel.getLibraryButton());
+
+        registerSection(
+                FAVORITES,
+                new FavoritesPanel(),
+                mainPanel.getFavoritesButton());
+
+        registerSection(
+                PLAYLISTS,
+                new SectionPanel("Playlists"),
+                mainPanel.getPlaylistsButton());
+
+        registerSection(
+                HISTORY,
+                new HistoryPanel(),
+                mainPanel.getHistoryButton());
+
+        // Panel de configuración funcional
+        registerSection(
+                SETTINGS,
+                new SettingsPanel(
+                        lightTheme,
+                        this::applyTheme),
+                mainPanel.getSettingsButton());
 
         showSection(HOME);
+
+        // Aplica el tema guardado al iniciar
+        applyTheme(lightTheme);
     }
 
-    private void registerSection(String command, MyPanel panel, MyButton button) {
+    private void registerSection(
+            String command,
+            MyPanel panel,
+            MyButton button) {
+
         button.setActionCommand(command);
+
         sectionPanels.put(command, panel);
         sectionButtons.put(command, button);
     }
 
     /**
-     * Pone al listener (el Presenter) a escuchar los botones del menú.
+     * Pone al listener (el Presenter) a escuchar
+     * los botones del menú.
      *
      * @param listener listener de los botones del menú
      */
     public void addMenuListener(ActionListener listener) {
+
         for (MyButton button : sectionButtons.values()) {
+
             button.addActionListener(listener);
         }
     }
 
     /**
-     * Muestra el panel de una sección y resalta su botón del menú.
+     * Muestra el panel de una sección y resalta
+     * su botón del menú.
      *
-     * @param section comando de acción de la sección, por ejemplo ViewFrame.HOME
+     * @param section comando de acción de la sección
      */
     public void showSection(String section) {
+
         MyPanel panel = sectionPanels.get(section);
+
         if (panel != null) {
+
             mainPanel.showContent(panel);
-            mainPanel.selectButton(sectionButtons.get(section));
+
+            mainPanel.selectButton(
+                    sectionButtons.get(section));
         }
     }
 
+    /** Aplica el tema elegido a todas las pantallas. */
+    public void applyTheme(boolean light) {
+
+        lightTheme = light;
+
+        ThemeManager.apply(
+                getContentPane(), light);
+
+        getContentPane().revalidate();
+        getContentPane().repaint();
+    }
+
+    public boolean isLightTheme() {
+        return lightTheme;
+    }
+
+    public SettingsPanel getSettingsPanel() {
+
+        return (SettingsPanel)
+                sectionPanels.get(SETTINGS);
+    }
+
     public ExplorePanel getExplorePanel() {
-        return (ExplorePanel) sectionPanels.get(EXPLORE);
+
+        return (ExplorePanel)
+                sectionPanels.get(EXPLORE);
     }
 
     public MainPanel getMainPanel() {
@@ -94,10 +181,14 @@ public class ViewFrame extends JFrame {
     }
 
     public FavoritesPanel getFavoritesPanel() {
-        return (FavoritesPanel) sectionPanels.get(FAVORITES);
+
+        return (FavoritesPanel)
+                sectionPanels.get(FAVORITES);
     }
 
     public HistoryPanel getHistoryPanel() {
-        return (HistoryPanel) sectionPanels.get(HISTORY);
+
+        return (HistoryPanel)
+                sectionPanels.get(HISTORY);
     }
 }
