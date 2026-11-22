@@ -13,6 +13,10 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.AbstractAction;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
+
 
 import co.edu.uptc.model.AudioPlayer;
 import co.edu.uptc.model.FavoritesManager;
@@ -30,6 +34,8 @@ import co.edu.uptc.view.ExplorePanel;
 import co.edu.uptc.view.FavoritesPanel;
 import co.edu.uptc.view.HistoryPanel;
 import co.edu.uptc.view.ViewFrame;
+
+
 
 /**
  * Coordina la vista y los servicios del modelo para búsquedas, reproducción,
@@ -64,6 +70,7 @@ public class Presenter implements ActionListener {
         // modelo.
         frame.addMenuListener(this);
         wirePlaybackControls();
+        wireKeyboardShortcuts();
         wireExplore();
         wireFavorites();
         wireHistory();
@@ -436,6 +443,70 @@ public class Presenter implements ActionListener {
         }
         return playedAt.format(DATE_FORMAT) + ", " + time;
     }
+
+/**
+ * Conecta los atajos globales mostrados
+ * en Configuración.
+ */
+private void wireKeyboardShortcuts() {
+
+    JComponent root = frame.getRootPane();
+
+    // Pausar y reanudar con Espacio
+    root.getInputMap(
+            JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(
+                KeyStroke.getKeyStroke("SPACE"),
+                "togglePlayback");
+
+    root.getActionMap().put(
+            "togglePlayback",
+            new AbstractAction() {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+
+            frame.getMainPanel()
+                    .getPlayPauseButton()
+                    .doClick();
+        }
+    });
+
+    // Siguiente canción con flecha derecha
+    root.getInputMap(
+            JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(
+                KeyStroke.getKeyStroke("RIGHT"),
+                "nextTrack");
+
+    root.getActionMap().put(
+            "nextTrack",
+            new AbstractAction() {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            playNext();
+        }
+    });
+
+    // Canción anterior con flecha izquierda
+    root.getInputMap(
+            JComponent.WHEN_IN_FOCUSED_WINDOW)
+            .put(
+                KeyStroke.getKeyStroke("LEFT"),
+                "previousTrack");
+
+    root.getActionMap().put(
+            "previousTrack",
+            new AbstractAction() {
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            playPrevious();
+        }
+    });
+}
+
 
     @Override
     public void actionPerformed(ActionEvent event) {

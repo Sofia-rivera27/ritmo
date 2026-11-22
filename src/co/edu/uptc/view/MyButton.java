@@ -164,4 +164,40 @@ public class MyButton extends JButton {
         super.paintComponent(g2); // dibuja el texto encima
         g2.dispose();
     }
+    
+    /**
+     * Actualiza los colores del botón al cambiar
+     * el tema de la aplicación.
+     */
+    public void applyTheme(boolean light) {
+
+        Color bg = backgroundColor;
+        Color fg = getForeground();
+        Color border = borderColor;
+
+        if (light) {
+
+            if (bg.equals(new Color(28, 28, 28)))
+                bg = Color.WHITE;
+
+            else if (bg.equals(new Color(38, 38, 38)))
+                bg = new Color(238, 238, 238);
+
+            else if (bg.equals(new Color(48, 48, 48)))
+                bg = new Color(220, 220, 220);
+
+        } else {
+
+            if (bg.equals(Color.WHITE))
+                bg = new Color(28, 28, 28);
+
+            else if (bg.equals(new Color(238, 238, 238)))
+                bg = new Color(38, 38, 38);
+
+            else if (bg.equals(new Color(220, 220, 220)))
+                bg = new Color(48, 48, 48);
+        }
+
+        setColors(bg, fg, border);
+    }
 }
