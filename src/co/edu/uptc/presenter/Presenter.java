@@ -1,8 +1,13 @@
 package co.edu.uptc.presenter;
 
+import java.awt.Component;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -16,6 +21,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
+import javax.swing.text.JTextComponent;
 
 
 import co.edu.uptc.model.AudioPlayer;
@@ -23,6 +29,8 @@ import co.edu.uptc.model.FavoritesManager;
 import co.edu.uptc.model.HistoryEntry;
 import co.edu.uptc.model.HistoryManager;
 import co.edu.uptc.model.JamendoService;
+import co.edu.uptc.model.MusicData;
+import co.edu.uptc.model.MusicDataStore;
 import co.edu.uptc.model.PersistenceManager;
 import co.edu.uptc.model.PlayList;
 import co.edu.uptc.model.PlaybackQueue;
@@ -33,6 +41,7 @@ import co.edu.uptc.model.UserStore;
 import co.edu.uptc.view.ExplorePanel;
 import co.edu.uptc.view.FavoritesPanel;
 import co.edu.uptc.view.HistoryPanel;
+import co.edu.uptc.view.PlaylistPanel;
 import co.edu.uptc.view.ViewFrame;
 
 
@@ -56,6 +65,9 @@ public class Presenter implements ActionListener {
     private final FavoritesManager favoritesManager = new FavoritesManager();
     private final PlaylistManager playlistManager = new PlaylistManager();
     private final HistoryManager historyManager = new HistoryManager();
+    private final MusicDataStore musicDataStore = new MusicDataStore();
+    /** Playlist abierta en la sección Playlists, o null si se ve la lista. */
+    private PlayList openPlaylist;
     // Los botones de resultados envían índices; esta lista conserva su
     // correspondencia.
     private final List<Song> shownSongs = new ArrayList<>();
@@ -74,6 +86,15 @@ public class Presenter implements ActionListener {
         wireExplore();
         wireFavorites();
         wireHistory();
+        wirePlaylists();
+        // Carga lo guardado en la sesión anterior y lo guarda otra vez al cerrar
+        loadMusicData();
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                saveMusicData();
+            }
+        });
         // La reproducción avisa al presentador para mostrar errores y avanzar al
         // terminar.
         audioPlayer.setErrorListener(message -> SwingUtilities.invokeLater(() -> frame.getExplorePanel()
@@ -126,6 +147,7 @@ public class Presenter implements ActionListener {
                 }
                 panel.setFavorite(Integer.parseInt(event.getActionCommand()), song.isFavorite());
                 refreshFavorites();
+                saveMusicData();
             }
         });
         panel.addPlaylistListener(event -> {
@@ -152,6 +174,7 @@ public class Presenter implements ActionListener {
             if (index >= 0 && index < songs.size()) {
                 favoritesManager.unmarkFavorite(songs.get(index));
                 refreshFavorites();
+                saveMusicData();
             }
         });
         panel.addPlayAllListener(event -> {
@@ -185,6 +208,7 @@ public class Presenter implements ActionListener {
             if (answer == JOptionPane.YES_OPTION) {
                 historyManager.clear();
                 refreshHistory();
+                saveMusicData();
             }
         });
     }
@@ -232,17 +256,77 @@ public class Presenter implements ActionListener {
         }
         List<File> selected = List.of(files);
         panel.setStatus("Leyendo archivos MP3...");
-        // La lectura de metadatos también ocurre en segundo plano para mantener la
-        // interfaz activa.
+        // Leer los metadatos es lento, por eso se hace en otro hilo. Agregar las
+        // canciones a la biblioteca se hace después en el hilo de Swing.
         new Thread(() -> {
-            List<Song> found = ritmoSystem.detectMp3(selected);
-            for (Song song : found) {
-                ritmoSystem.addSong(song);
+            try {
+                List<Song> found = ritmoSystem.detectMp3(selected);
+                SwingUtilities.invokeLater(() -> addImportedSongs(panel, found));
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> panel.setStatus("No se pudieron leer los MP3: " + e.getMessage()));
             }
-            String title = "Resultados: archivos MP3 · " + found.size();
-            SwingUtilities.invokeLater(() -> showSongs(panel, found, title,
-                    found.isEmpty() ? "No se pudieron leer archivos MP3." : " "));
         }, "mp3-metadata").start();
+    }
+
+    /**
+     * Agrega a la biblioteca las canciones leídas. Si una ya estaba, se usa la
+     * que ya existía en vez de lanzar un error, así importar el mismo archivo
+     * dos veces no deja la aplicación colgada.
+     */
+    private void addImportedSongs(ExplorePanel panel, List<Song> found) {
+        List<Song> results = new ArrayList<>();
+        int added = 0;
+        int repeated = 0;
+        int invalid = 0;
+        for (Song song : found) {
+            Song existing = findInLibrary(song);
+            if (existing != null) {
+                results.add(existing);
+                repeated++;
+                continue;
+            }
+            try {
+                ritmoSystem.addSong(song);
+                results.add(song);
+                added++;
+            } catch (IllegalArgumentException e) {
+                invalid++;
+            }
+        }
+        if (added > 0) {
+            saveMusicData();
+        }
+        String title = "Resultados: archivos MP3 · " + results.size();
+        showSongs(panel, results, title, importMessage(found.size(), added, repeated, invalid));
+    }
+
+    private Song findInLibrary(Song song) {
+        for (Song other : ritmoSystem.getSongs()) {
+            if (other.equals(song) || sameText(other.getFilePath(), song.getFilePath())) {
+                return other;
+            }
+        }
+        return null;
+    }
+
+    private boolean sameText(String first, String second) {
+        return first != null && second != null && first.equalsIgnoreCase(second);
+    }
+
+    private String importMessage(int read, int added, int repeated, int invalid) {
+        if (read == 0) {
+            return "No se pudieron leer archivos MP3.";
+        }
+        StringBuilder message = new StringBuilder();
+        message.append(added == 1 ? "1 canción nueva" : added + " canciones nuevas");
+        if (repeated > 0) {
+            message.append(" · ").append(repeated == 1 ? "1 ya estaba" : repeated + " ya estaban")
+                    .append(" en la biblioteca");
+        }
+        if (invalid > 0) {
+            message.append(" · ").append(invalid).append(" no válidas");
+        }
+        return message.toString();
     }
 
     private void showSongs(ExplorePanel panel, List<Song> songs, String title, String message) {
@@ -269,12 +353,12 @@ public class Presenter implements ActionListener {
         return shownSongs.get(index);
     }
 
-    private void addToQueue(Song song, ExplorePanel panel, boolean playNow) {
+    private boolean addToQueue(Song song, ExplorePanel panel, boolean playNow) {
         // Valida la pista antes de añadirla y permite iniciar inmediatamente la
         // seleccionada.
         if (!playbackQueue.add(song)) {
             panel.setStatus("No se pudo agregar: se requiere una URL o un archivo MP3 valido.");
-            return;
+            return false;
         }
         if (playNow) {
             playbackQueue.select(playbackQueue.size() - 1);
@@ -285,6 +369,7 @@ public class Presenter implements ActionListener {
         updateQueueControls();
         panel.setStatus(playNow ? "Reproduciendo: " + song.getTitle()
                 : "Agregada a la cola: " + song.getTitle());
+        return true;
     }
 
     private void removeFromQueue(int index, ExplorePanel panel) {
@@ -325,6 +410,7 @@ public class Presenter implements ActionListener {
             audioPlayer.play(song);
             historyManager.addPlayed(song);
             refreshHistory();
+            saveMusicData();
             frame.getExplorePanel().setStatus("Reproduciendo: " + song.getTitle()
                     + " - " + song.getArtist());
             frame.getMainPanel().getPlayPauseButton().setText("⏸");
@@ -379,22 +465,50 @@ public class Presenter implements ActionListener {
         if (selected == null) {
             return;
         }
-        String name = selected.toString();
-        if (name.equals(createOption)) {
-            name = JOptionPane.showInputDialog(frame, "Nombre de la playlist:");
-            if (name == null || name.isBlank()) {
+        PlayList playlist;
+        if (selected.toString().equals(createOption)) {
+            playlist = askNewPlaylist();
+            if (playlist == null) {
                 return;
             }
-            playlistManager.createPlayList(name.trim());
-            name = name.trim();
+        } else {
+            playlist = playlistManager.findPlayList(selected.toString());
         }
-        for (PlayList playlist : playlistManager.getPlayLists()) {
-            if (playlist.getName().equals(name)) {
-                if (!playlist.getSongs().contains(song)) {
-                    playlist.addSong(song);
-                }
-                panel.setStatus("Agregada a playlist: " + name);
-                return;
+        if (playlist == null) {
+            return;
+        }
+        if (playlist.getSongs().contains(song)) {
+            panel.setStatus("Esa canción ya está en la playlist " + playlist.getName() + ".");
+            return;
+        }
+        playlist.addSong(song);
+        panel.setStatus("Agregada a playlist: " + playlist.getName());
+        refreshPlaylists();
+        saveMusicData();
+    }
+
+    /**
+     * Pide el nombre de una playlist nueva y la crea. Si el nombre no es válido
+     * (vacío, muy largo o repetido) muestra el motivo y lo vuelve a pedir.
+     *
+     * @return la playlist creada, o null si el usuario canceló
+     */
+    private PlayList askNewPlaylist() {
+        String name = "";
+        while (true) {
+            name = (String) JOptionPane.showInputDialog(frame, "Nombre de la playlist:", "Nueva playlist",
+                    JOptionPane.PLAIN_MESSAGE, null, null, name);
+            if (name == null) {
+                return null;
+            }
+            try {
+                PlayList playlist = playlistManager.createPlayList(name);
+                refreshPlaylists();
+                saveMusicData();
+                return playlist;
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(frame, e.getMessage(), "No se pudo crear la playlist",
+                        JOptionPane.WARNING_MESSAGE);
             }
         }
     }
@@ -403,6 +517,7 @@ public class Presenter implements ActionListener {
         // Refleja los cambios en Favoritos y actualiza los corazones de los resultados
         // visibles.
         frame.getFavoritesPanel().showFavorites(favoriteRows());
+        frame.refreshTheme();
         ExplorePanel explore = frame.getExplorePanel();
         for (int i = 0; i < shownSongs.size(); i++) {
             explore.setFavorite(i, favoritesManager.isFavorite(shownSongs.get(i)));
@@ -412,15 +527,15 @@ public class Presenter implements ActionListener {
     private List<String[]> favoriteRows() {
         List<String[]> rows = new ArrayList<>();
         for (Song song : favoritesManager.getFavorites()) {
-            int seconds = (int) song.getDuration();
             rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(),
-                    song.getGenre(), String.format("%d:%02d", seconds / 60, seconds % 60) });
+                    song.getGenre(), formatDuration(song.getDuration()) });
         }
         return rows;
     }
 
     private void refreshHistory() {
         frame.getHistoryPanel().showHistory(historyRows());
+        frame.refreshTheme();
     }
 
     private List<String[]> historyRows() {
@@ -444,69 +559,276 @@ public class Presenter implements ActionListener {
         return playedAt.format(DATE_FORMAT) + ", " + time;
     }
 
-/**
- * Conecta los atajos globales mostrados
- * en Configuración.
- */
-private void wireKeyboardShortcuts() {
+    /**
+     * Conecta los atajos globales que se muestran en Configuración: Espacio
+     * para pausar o reanudar, y las flechas para cambiar de canción.
+     */
+    private void wireKeyboardShortcuts() {
+        bindShortcut("SPACE", "togglePlayback",
+                () -> frame.getMainPanel().getPlayPauseButton().doClick());
+        bindShortcut("RIGHT", "nextTrack", this::playNext);
+        bindShortcut("LEFT", "previousTrack", this::playPrevious);
+    }
 
-    JComponent root = frame.getRootPane();
+    /**
+     * Registra un atajo en toda la ventana. El atajo se desactiva mientras el
+     * cursor está en un campo de texto, para que escribir un espacio o mover el
+     * cursor con las flechas no pause ni cambie la música.
+     *
+     * @param key    tecla, por ejemplo "SPACE"
+     * @param name   nombre interno de la acción
+     * @param action lo que hace el atajo
+     */
+    private void bindShortcut(String key, String name, Runnable action) {
+        JComponent root = frame.getRootPane();
+        root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(key), name);
+        root.getActionMap().put(name, new AbstractAction() {
+            @Override
+            public boolean isEnabled() {
+                return !isTyping();
+            }
 
-    // Pausar y reanudar con Espacio
-    root.getInputMap(
-            JComponent.WHEN_IN_FOCUSED_WINDOW)
-            .put(
-                KeyStroke.getKeyStroke("SPACE"),
-                "togglePlayback");
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                action.run();
+            }
+        });
+    }
 
-    root.getActionMap().put(
-            "togglePlayback",
-            new AbstractAction() {
+    private boolean isTyping() {
+        Component focused = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        return focused instanceof JTextComponent;
+    }
 
-        @Override
-        public void actionPerformed(ActionEvent e) {
+    // ---------------------------------------------------------------
+    // Playlists
+    // ---------------------------------------------------------------
 
-            frame.getMainPanel()
-                    .getPlayPauseButton()
-                    .doClick();
+    private void wirePlaylists() {
+        PlaylistPanel panel = frame.getPlaylistPanel();
+        panel.addCreateListener(event -> askNewPlaylist());
+        panel.addOpenListener(event -> {
+            PlayList playlist = playlistAt(event.getActionCommand());
+            if (playlist != null) {
+                openPlaylist = playlist;
+                refreshPlaylists();
+            }
+        });
+        panel.addBackListener(event -> {
+            openPlaylist = null;
+            refreshPlaylists();
+        });
+        panel.addRenameListener(event -> renamePlaylist(playlistAt(event.getActionCommand())));
+        panel.addDeleteListener(event -> deletePlaylist(playlistAt(event.getActionCommand())));
+        panel.addPlayAllListener(event -> playOpenPlaylist());
+        panel.addPlaySongListener(event -> {
+            Song song = openPlaylistSongAt(event.getActionCommand());
+            if (song != null && !addToQueue(song, frame.getExplorePanel(), true)) {
+                panel.setStatus("No se puede reproducir \"" + song.getTitle()
+                        + "\": el archivo ya no existe o el enlace no es válido.");
+            }
+        });
+        panel.addRemoveSongListener(event -> {
+            Song song = openPlaylistSongAt(event.getActionCommand());
+            if (song != null) {
+                openPlaylist.removeSong(song);
+                refreshPlaylists();
+                saveMusicData();
+            }
+        });
+        refreshPlaylists();
+    }
+
+    private void renamePlaylist(PlayList playlist) {
+        if (playlist == null) {
+            return;
         }
-    });
-
-    // Siguiente canción con flecha derecha
-    root.getInputMap(
-            JComponent.WHEN_IN_FOCUSED_WINDOW)
-            .put(
-                KeyStroke.getKeyStroke("RIGHT"),
-                "nextTrack");
-
-    root.getActionMap().put(
-            "nextTrack",
-            new AbstractAction() {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            playNext();
+        String name = playlist.getName();
+        while (true) {
+            name = (String) JOptionPane.showInputDialog(frame, "Nuevo nombre:", "Renombrar playlist",
+                    JOptionPane.PLAIN_MESSAGE, null, null, name);
+            if (name == null) {
+                return;
+            }
+            try {
+                playlistManager.renamePlayList(playlist.getName(), name);
+                refreshPlaylists();
+                saveMusicData();
+                return;
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(frame, e.getMessage(), "No se pudo renombrar",
+                        JOptionPane.WARNING_MESSAGE);
+            }
         }
-    });
+    }
 
-    // Canción anterior con flecha izquierda
-    root.getInputMap(
-            JComponent.WHEN_IN_FOCUSED_WINDOW)
-            .put(
-                KeyStroke.getKeyStroke("LEFT"),
-                "previousTrack");
-
-    root.getActionMap().put(
-            "previousTrack",
-            new AbstractAction() {
-
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            playPrevious();
+    private void deletePlaylist(PlayList playlist) {
+        if (playlist == null) {
+            return;
         }
-    });
-}
+        int answer = JOptionPane.showConfirmDialog(frame,
+                "¿Seguro que quieres eliminar la playlist \"" + playlist.getName() + "\"?\n"
+                        + "Las canciones no se borran de la biblioteca.",
+                "Eliminar playlist", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) {
+            return;
+        }
+        playlistManager.deletePlayList(playlist.getName());
+        if (openPlaylist == playlist) {
+            openPlaylist = null;
+        }
+        refreshPlaylists();
+        saveMusicData();
+    }
 
+    /** Pone en la cola las canciones de la playlist abierta y empieza a reproducir. */
+    private void playOpenPlaylist() {
+        if (openPlaylist == null) {
+            return;
+        }
+        playbackQueue.clear();
+        int skipped = 0;
+        for (Song song : openPlaylist.getSongs()) {
+            if (!playbackQueue.add(song)) {
+                skipped++;
+            }
+        }
+        updateQueueControls();
+        PlaylistPanel panel = frame.getPlaylistPanel();
+        if (playbackQueue.size() == 0) {
+            panel.setStatus("Ninguna canción de esta playlist se puede reproducir.");
+            return;
+        }
+        playCurrent();
+        panel.setStatus(skipped == 0 ? "Reproduciendo " + openPlaylist.getName()
+                : "Reproduciendo " + openPlaylist.getName() + " · " + skipped
+                        + " no se pudieron agregar (archivo no encontrado)");
+    }
+
+    private void refreshPlaylists() {
+        PlaylistPanel panel = frame.getPlaylistPanel();
+        if (openPlaylist != null && playlistManager.getPlayLists().contains(openPlaylist)) {
+            panel.showPlaylistDetail(openPlaylist.getName(), songRows(openPlaylist.getSongs()));
+        } else {
+            openPlaylist = null;
+            panel.showPlaylists(playlistRows());
+        }
+        frame.refreshTheme();
+    }
+
+    private List<String[]> playlistRows() {
+        List<String[]> rows = new ArrayList<>();
+        for (PlayList playlist : playlistManager.getPlayLists()) {
+            int count = playlist.getSongs().size();
+            rows.add(new String[] { playlist.getName(), count == 1 ? "1 canción" : count + " canciones" });
+        }
+        return rows;
+    }
+
+    private List<String[]> songRows(List<Song> songs) {
+        List<String[]> rows = new ArrayList<>();
+        for (Song song : songs) {
+            rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(),
+                    formatDuration(song.getDuration()) });
+        }
+        return rows;
+    }
+
+    private PlayList playlistAt(String command) {
+        List<PlayList> playlists = playlistManager.getPlayLists();
+        int index = parseIndex(command);
+        return index >= 0 && index < playlists.size() ? playlists.get(index) : null;
+    }
+
+    private Song openPlaylistSongAt(String command) {
+        if (openPlaylist == null) {
+            return null;
+        }
+        int index = parseIndex(command);
+        List<Song> songs = openPlaylist.getSongs();
+        return index >= 0 && index < songs.size() ? songs.get(index) : null;
+    }
+
+    /** Convierte el comando de un botón en índice; devuelve -1 si no es un número. */
+    private int parseIndex(String command) {
+        try {
+            return Integer.parseInt(command);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private String formatDuration(double duration) {
+        int seconds = (int) Math.max(0, duration);
+        return String.format("%d:%02d", seconds / 60, seconds % 60);
+    }
+
+    // ---------------------------------------------------------------
+    // Guardar y cargar
+    // ---------------------------------------------------------------
+
+    /**
+     * Carga la biblioteca, las playlists, los favoritos y el historial de la
+     * sesión anterior. Si algo falla, la aplicación arranca vacía en vez de
+     * cerrarse.
+     */
+    private void loadMusicData() {
+        MusicData data;
+        try {
+            data = musicDataStore.load();
+        } catch (IOException e) {
+            System.err.println("No se pudieron cargar los datos guardados: " + e.getMessage());
+            return;
+        }
+        for (Song song : data.getLibrary()) {
+            try {
+                ritmoSystem.addSong(song);
+            } catch (IllegalArgumentException e) {
+                // El archivo ya no existe o la canción está repetida: se omite
+            }
+        }
+        for (Song song : data.getFavorites()) {
+            favoritesManager.markFavorite(song);
+        }
+        for (PlayList saved : data.getPlaylists()) {
+            try {
+                PlayList playlist = playlistManager.createPlayList(saved.getName());
+                for (Song song : saved.getSongs()) {
+                    if (!playlist.getSongs().contains(song)) {
+                        playlist.addSong(song);
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                // Nombre inválido o repetido: se omite esa playlist
+            }
+        }
+        // El historial se guarda del más reciente al más antiguo; se agrega al
+        // revés porque addPlayed pone cada registro de primero.
+        List<HistoryEntry> history = data.getHistory();
+        for (int i = history.size() - 1; i >= 0; i--) {
+            historyManager.addPlayed(history.get(i).getSong(), history.get(i).getPlayedAt());
+        }
+        refreshFavorites();
+        refreshHistory();
+        refreshPlaylists();
+    }
+
+    /**
+     * Guarda el estado actual. Se llama después de cada cambio y al cerrar la
+     * ventana, así no se pierde nada aunque la aplicación se cierre de golpe.
+     */
+    private void saveMusicData() {
+        MusicData data = new MusicData();
+        data.getLibrary().addAll(ritmoSystem.getSongs());
+        data.getPlaylists().addAll(playlistManager.getPlayLists());
+        data.getFavorites().addAll(favoritesManager.getFavorites());
+        data.getHistory().addAll(historyManager.getEntries());
+        try {
+            musicDataStore.save(data);
+        } catch (IOException e) {
+            System.err.println("No se pudieron guardar los datos: " + e.getMessage());
+        }
+    }
 
     @Override
     public void actionPerformed(ActionEvent event) {

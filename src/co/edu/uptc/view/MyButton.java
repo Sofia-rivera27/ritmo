@@ -55,6 +55,10 @@ public class MyButton extends JButton {
         setContentAreaFilled(false);
         setBorderPainted(false);
         setFocusPainted(false);
+        // El botón no toma el foco del teclado. Si lo tomara, la barra
+        // espaciadora volvería a presionar el último botón usado en vez de
+        // pausar o reanudar la música.
+        setFocusable(false);
         setOpaque(false);
         setMargin(new Insets(0, 0, 0, 0));
 
@@ -198,6 +202,22 @@ public class MyButton extends JButton {
                 bg = new Color(48, 48, 48);
         }
 
+        // El texto claro sobre un fondo transparente o blanco no se vería en el
+        // tema claro, así que se oscurece (y al revés al volver al oscuro).
+        // Los botones amarillos no cambian porque ya usan texto oscuro.
+        boolean lightBackground = bg.getAlpha() == 0 || bg.equals(Color.WHITE)
+                || bg.equals(new Color(238, 238, 238)) || bg.equals(new Color(220, 220, 220));
+        if (light && lightBackground && fg.equals(LIGHT_THEME_TEXT_SOURCE)) {
+            fg = LIGHT_THEME_TEXT;
+        } else if (!light && fg.equals(LIGHT_THEME_TEXT)) {
+            fg = LIGHT_THEME_TEXT_SOURCE;
+        }
+
         setColors(bg, fg, border);
     }
+
+    /** Color de texto del tema oscuro que se reemplaza en el tema claro. */
+    private static final Color LIGHT_THEME_TEXT_SOURCE = new Color(235, 235, 235);
+    /** Color de texto que usan los botones en el tema claro. */
+    private static final Color LIGHT_THEME_TEXT = new Color(35, 35, 35);
 }
