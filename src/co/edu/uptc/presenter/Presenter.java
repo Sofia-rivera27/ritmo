@@ -93,7 +93,8 @@ public class Presenter implements ActionListener {
     private final List<Song> shownLibrarySongs = new ArrayList<>();
     /** Favoritas que se ven en Favoritos, en el mismo orden (puede estar filtrada). */
     private final List<Song> shownFavorites = new ArrayList<>();
-
+    /**ruta relativa*/
+    private static final String DATA_DIR_KEY = "data.directory";
     public Presenter() {
         // Único lugar donde se eligen las clases concretas de la vista y el modelo
         frame = new ViewFrame();
@@ -105,6 +106,7 @@ public class Presenter implements ActionListener {
         // Centraliza aquí las conexiones para que las vistas no accedan directamente al
         // modelo.
         frame.addMenuListener(this);
+        chooseDataDirectory();
         wirePlaybackControls();
         wirePlayerBar();
         wireKeyboardShortcuts();
@@ -184,7 +186,30 @@ public class Presenter implements ActionListener {
             panel.showMessage("Usuario o contraseña incorrectos.");
         }
     }
-
+/*
+ * Al iniciar el proyecto elige la carpeta
+ * */
+    private void chooseDataDirectory() {
+        File folder = null;
+        String saved = preferences.get(DATA_DIR_KEY, "");
+        if (!saved.isEmpty() && new File(saved).isDirectory()) {
+            folder = new File(saved);
+        }
+        boolean chosen = folder != null;
+        while (!chosen) {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Elige la carpeta donde se guardan los datos de Ritmo");
+            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                folder = chooser.getSelectedFile();
+                chosen = true;
+            } else {
+                JOptionPane.showMessageDialog(null, "Debes elegir una carpeta para continuar.");
+            }
+        }
+        preferences.put(DATA_DIR_KEY, folder.getAbsolutePath());
+        persistenceManager.setBaseDirectory(folder);
+    }
     /**
      * Abre la aplicación para un usuario: carga sus datos (cada usuario tiene
      * su propia carpeta) y muestra Home.
@@ -201,12 +226,10 @@ public class Presenter implements ActionListener {
     }
 
     /**
-     * Archivo de datos de un usuario: ~/.ritmo/usuarios/&lt;rol&gt;-&lt;usuario&gt;/musica.properties
+     * 
      */
     private File userDataFile(String role, String userName) {
-        File folder = new File(System.getProperty("user.home"),
-                ".ritmo" + File.separator + "usuarios" + File.separator + role + "-" + userName);
-        return new File(folder, "musica.properties");
+        return persistenceManager.getUserDataFile(role, userName);
     }
 
     /**

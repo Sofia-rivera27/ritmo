@@ -127,31 +127,7 @@ public class RitmoSystem extends Model {
      * Carga los usuarios, con sus bibliotecas y playlists, desde el archivo JSON.
      * Si el archivo no existe, no carga nada.
      */
-    public void loadData() {
-        File file = new File(jsonFilePath);
-        if (!file.exists()) {
-            return;
-        }
-
-        try {
-            String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
-            users.clear();
-
-            Matcher userMatcher = USER_PATTERN.matcher(content);
-            while (userMatcher.find()) {
-                String userName = unescapeJson(userMatcher.group(1));
-                String password = unescapeJson(userMatcher.group(2));
-                String libraryName = unescapeJson(userMatcher.group(3));
-                String playlistsBlock = userMatcher.group(4);
-
-                Library library = new Library(libraryName);
-                loadPlaylists(playlistsBlock, library);
-                users.add(new UserListener(userName, password, library));
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+ 
 
     private void loadPlaylists(String playlistsBlock, Library library) {
         Matcher playlistMatcher = PLAYLIST_PATTERN.matcher(playlistsBlock);
