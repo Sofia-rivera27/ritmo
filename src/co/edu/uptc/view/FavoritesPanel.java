@@ -9,6 +9,7 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
@@ -20,6 +21,8 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 /**
  * Sección de canciones favoritas.
@@ -51,6 +54,9 @@ public class FavoritesPanel extends MyPanel {
 
     private final List<MyButton> removeButtons = new ArrayList<>();
     private ActionListener removeListener;
+    private ActionListener searchListener;
+    /** true mientras el buscador muestra el texto de ayuda y no algo escrito. */
+    private boolean showingPlaceholder = true;
 
     /**
      * Construye el panel de favoritos: barra superior, cuerpo y canciones de prueba.
@@ -96,18 +102,39 @@ public class FavoritesPanel extends MyPanel {
         searchField.addFocusListener(new FocusAdapter() {
             @Override
             public void focusGained(FocusEvent e) {
-                if (searchField.getText().equals(SEARCH_PLACEHOLDER)) {
+                if (showingPlaceholder) {
+                    showingPlaceholder = false;
                     searchField.setText("");
                     searchField.setForeground(Palette.TEXT);
+                    ThemeManager.refresh(searchField);
                 }
             }
 
             @Override
             public void focusLost(FocusEvent e) {
                 if (searchField.getText().isEmpty()) {
+                    showingPlaceholder = true;
                     searchField.setText(SEARCH_PLACEHOLDER);
                     searchField.setForeground(Palette.TEXT_MUTED);
+                    ThemeManager.refresh(searchField);
                 }
+            }
+        });
+        // Filtra mientras se escribe, sin tener que presionar Enter
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                searchChanged();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                searchChanged();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                searchChanged();
             }
         });
         searchBox.add(searchField, BorderLayout.CENTER);
@@ -333,25 +360,44 @@ public class FavoritesPanel extends MyPanel {
     }
 
     /**
-     * Actualiza la lista con las canciones favoritas recibidas.
-     * <p>
-     * Borra las filas anteriores, crea una fila por canción, actualiza el contador
-     * y le pone el listener de quitar a los botones nuevos, si ya se había
-     * registrado.
+     * Actualiza la lista con las canciones favoritas recibidas, sin filtro.
      *
-     * @param songs lista de canciones; cada elemento es un arreglo con título, artista,
-     *              álbum, género y duración
+     * @param songs lista de canciones; cada elemento es un arreglo con título,
+     *              artista, álbum, género y duración
      */
     public void showFavorites(List<String[]> songs) {
+        showFavorites(songs, songs.size());
+    }
+
+    /**
+     * Actualiza la lista con las canciones favoritas recibidas.
+     * <p>
+     * Borra las filas anteriores, crea una fila por canción, actualiza el
+     * contador y le pone el listener de quitar a los botones nuevos, si ya se
+     * había registrado. Si no hay nada que mostrar, muestra un mensaje.
+     *
+     * @param songs          canciones que se ven (pueden estar filtradas por el
+     *                       buscador); cada elemento es un arreglo con título,
+     *                       artista, álbum, género y duración
+     * @param totalFavorites cantidad total de favoritas, sin filtrar
+     */
+    public void showFavorites(List<String[]> songs, int totalFavorites) {
         songList.removeAll();
         removeButtons.clear();
 
+        if (totalFavorites == 0) {
+            songList.add(createEmptyMessage("Todavía no tienes favoritas. Toca ♡ en una canción para agregarla."));
+        } else if (songs.isEmpty()) {
+            songList.add(createEmptyMessage("Ninguna favorita coincide con \"" + getQuery() + "\"."));
+        }
         for (int i = 0; i < songs.size(); i++) {
             songList.add(createRow(songs.get(i), i));
             songList.add(Box.createVerticalStrut(6));
         }
 
-        titleLabel.setText(TITLE_PREFIX + songs.size());
+        titleLabel.setText(songs.size() == totalFavorites ? TITLE_PREFIX + totalFavorites
+                : TITLE_PREFIX + songs.size() + " de " + totalFavorites);
+        playAllButton.setEnabled(!songs.isEmpty());
 
         // Los botones nuevos también deben escuchar
         if (removeListener != null) {
@@ -360,8 +406,45 @@ public class FavoritesPanel extends MyPanel {
             }
         }
 
+        // Las filas nuevas se crean con colores del tema oscuro
+        ThemeManager.refresh(songList);
         songList.revalidate();
         songList.repaint();
+    }
+
+    private MyPanel createEmptyMessage(String text) {
+        MyPanel box = new MyPanel();
+        box.applyLayout(new FlowLayout(FlowLayout.LEFT, 0, 10));
+        box.setBackgroundColor(Palette.BACKGROUND);
+        box.setPreferredSize(null);
+        box.setAlignmentX(Component.LEFT_ALIGNMENT);
+        box.add(createLabel(text, Palette.TEXT_MUTED, Font.PLAIN, 12));
+        return box;
+    }
+
+    private void searchChanged() {
+        if (!showingPlaceholder && searchListener != null) {
+            searchListener.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, getQuery()));
+        }
+    }
+
+    /**
+     * Texto escrito en el buscador, sin espacios al inicio ni al final. Si solo
+     * se ve el texto de ayuda, devuelve una cadena vacía.
+     *
+     * @return texto que se busca
+     */
+    public String getQuery() {
+        return showingPlaceholder ? "" : searchField.getText().trim();
+    }
+
+    /**
+     * Registra lo que pasa cuando se escribe en el buscador.
+     *
+     * @param listener listener que atiende la búsqueda
+     */
+    public void addSearchListener(ActionListener listener) {
+        searchListener = listener;
     }
 
     /**

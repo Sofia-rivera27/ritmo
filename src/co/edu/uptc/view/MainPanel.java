@@ -43,6 +43,9 @@ public class MainPanel extends MyPanel {
     private MyButton previousButton;
     private MyButton queueButton;
 
+    private JLabel sessionLabel;
+    private MyButton logoutButton;
+
     public MainPanel() {
         setBackgroundColor(Palette.BACKGROUND);
         applyLayout(new BorderLayout());
@@ -85,6 +88,38 @@ public class MainPanel extends MyPanel {
         playlistsButton = createMenuButton("Playlists");
         historyButton = createMenuButton("Historial");
         settingsButton = createMenuButton("Configuración");
+
+        // Abajo del menú: quién inició sesión y el botón para salir
+        menu.add(Box.createVerticalGlue());
+        sessionLabel = new JLabel(" ");
+        sessionLabel.setForeground(Palette.TEXT_MUTED);
+        sessionLabel.setFont(new Font(Palette.FONT_FAMILY, Font.PLAIN, 11));
+        sessionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        menu.add(sessionLabel);
+        menu.add(Box.createVerticalStrut(8));
+
+        logoutButton = new MyButton("Cerrar sesión", Palette.TRANSPARENT, Palette.TEXT, Palette.CARD_BORDER);
+        logoutButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        logoutButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        logoutButton.setPreferredSize(new Dimension(MENU_WIDTH, 34));
+        logoutButton.setMinimumSize(new Dimension(0, 34));
+        logoutButton.setCornerRadius(10);
+        logoutButton.setFontStyle(Font.PLAIN, 12);
+        menu.add(logoutButton);
+    }
+
+    /**
+     * Muestra en el menú quién inició sesión.
+     *
+     * @param userName nombre del usuario
+     * @param admin    true si entró como administrador
+     */
+    public void setSessionUser(String userName, boolean admin) {
+        sessionLabel.setText("Sesión: " + userName + (admin ? " (admin)" : ""));
+    }
+
+    public MyButton getLogoutButton() {
+        return logoutButton;
     }
 
     /** Crea un botón con el estilo del menú y lo agrega al menú. */
@@ -94,6 +129,9 @@ public class MainPanel extends MyPanel {
         button.setHorizontalAlignment(SwingConstants.LEFT);
         button.setMargin(new Insets(0, 14, 0, 0));
         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, MENU_BUTTON_HEIGHT));
+        // Altura fija: así el espacio libre del menú no los aplasta
+        button.setPreferredSize(new Dimension(MENU_WIDTH, MENU_BUTTON_HEIGHT));
+        button.setMinimumSize(new Dimension(0, MENU_BUTTON_HEIGHT));
         button.setCornerRadius(10);
         button.setFontStyle(Font.PLAIN, MENU_FONT_SIZE);
 

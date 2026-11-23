@@ -39,12 +39,14 @@ import co.edu.uptc.model.PlaylistManager;
 import co.edu.uptc.model.RitmoSystem;
 import co.edu.uptc.model.SearchCriteria;
 import co.edu.uptc.model.Song;
+import co.edu.uptc.model.SongValidator;
 import co.edu.uptc.model.UserStore;
 import co.edu.uptc.view.ExplorePanel;
 import co.edu.uptc.view.FavoritesPanel;
 import co.edu.uptc.view.HistoryPanel;
 import co.edu.uptc.view.LibraryPanel;
 import co.edu.uptc.view.PlaylistPanel;
+import co.edu.uptc.view.RegisterPanel;
 import co.edu.uptc.view.ViewFrame;
 
 
@@ -68,7 +70,8 @@ public class Presenter implements ActionListener {
     private final FavoritesManager favoritesManager = new FavoritesManager();
     private final PlaylistManager playlistManager = new PlaylistManager();
     private final HistoryManager historyManager = new HistoryManager();
-    private final MusicDataStore musicDataStore = new MusicDataStore();
+    /** Datos del usuario que inició sesión; null mientras nadie haya entrado. */
+    private MusicDataStore musicDataStore;
     /** Playlist abierta en la sección Playlists, o null si se ve la lista. */
     private PlayList openPlaylist;
     // Los botones de resultados envían índices; esta lista conserva su
@@ -76,6 +79,8 @@ public class Presenter implements ActionListener {
     private final List<Song> shownSongs = new ArrayList<>();
     /** Canciones que se ven en Biblioteca, en el mismo orden (puede estar filtrada). */
     private final List<Song> shownLibrarySongs = new ArrayList<>();
+    /** Favoritas que se ven en Favoritos, en el mismo orden (puede estar filtrada). */
+    private final List<Song> shownFavorites = new ArrayList<>();
 
     public Presenter() {
         frame = new ViewFrame();
@@ -93,8 +98,8 @@ public class Presenter implements ActionListener {
         wireHistory();
         wirePlaylists();
         wireLibrary();
-        // Carga lo guardado en la sesión anterior y lo guarda otra vez al cerrar
-        loadMusicData();
+        wireLogin();
+        // Al cerrar la ventana guarda los datos del usuario que esté en sesión
         frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent event) {
@@ -106,7 +111,114 @@ public class Presenter implements ActionListener {
         audioPlayer.setErrorListener(message -> SwingUtilities.invokeLater(() -> frame.getExplorePanel()
                 .setStatus("Error de reproduccion: " + message)));
         audioPlayer.setEndListener(() -> SwingUtilities.invokeLater(this::playNext));
+        // Lo primero que se ve es el inicio de sesión
+        frame.showLogin();
         frame.setVisible(true);
+    }
+
+    // ---------------------------------------------------------------
+    // Inicio de sesión y registro
+    // ---------------------------------------------------------------
+
+    private void wireLogin() {
+        try {
+            userStore.load();
+        } catch (IOException e) {
+            System.err.println("No se pudieron cargar los usuarios: " + e.getMessage());
+        }
+        RegisterPanel panel = frame.getRegisterPanel();
+        panel.getPrimaryButton().addActionListener(event -> submitLogin());
+        // Enter en cualquier campo hace lo mismo que el botón principal
+        panel.getUserField().addActionListener(event -> submitLogin());
+        panel.getPasswordField().addActionListener(event -> submitLogin());
+        panel.getConfirmPasswordField().addActionListener(event -> submitLogin());
+        panel.getSecondaryButton().addActionListener(event -> panel.setSignUpMode(!panel.isSignUpMode()));
+        panel.getUserRoleButton().addActionListener(event -> panel.selectRole(false));
+        panel.getAdminRoleButton().addActionListener(event -> panel.selectRole(true));
+        frame.getMainPanel().getLogoutButton().addActionListener(event -> logout());
+    }
+
+    /** Botón "Ingresar" o "Registrarse", según el modo de la tarjeta. */
+    private void submitLogin() {
+        RegisterPanel panel = frame.getRegisterPanel();
+        String name = panel.getUserName();
+        String password = panel.getPasswordText();
+
+        if (panel.isSignUpMode()) {
+            try {
+                String savedName = userStore.register(name, password, panel.getConfirmPasswordText());
+                startSession(UserStore.ROLE_USER, savedName);
+            } catch (IllegalArgumentException e) {
+                panel.showMessage(e.getMessage());
+            } catch (IOException e) {
+                panel.showMessage("No se pudo guardar la cuenta.");
+            }
+            return;
+        }
+
+        if (UserStore.normalizeName(name).isEmpty() || password.isEmpty()) {
+            panel.showMessage(UserStore.MSG_EMPTY);
+            return;
+        }
+        String role = panel.isAdminSelected() ? UserStore.ROLE_ADMIN : UserStore.ROLE_USER;
+        if (userStore.login(role, name, password)) {
+            startSession(role, UserStore.normalizeName(name));
+        } else {
+            panel.showMessage("Usuario o contraseña incorrectos.");
+        }
+    }
+
+    /**
+     * Abre la aplicación para un usuario: carga sus datos (cada usuario tiene
+     * su propia carpeta) y muestra Home.
+     */
+    private void startSession(String role, String userName) {
+        musicDataStore = new MusicDataStore(userDataFile(role, userName));
+        loadMusicData();
+        frame.getMainPanel().setSessionUser(userName, UserStore.ROLE_ADMIN.equals(role));
+        frame.getRegisterPanel().setSignUpMode(false); // limpia los campos
+        frame.showApp();
+    }
+
+    /**
+     * Archivo de datos de un usuario: ~/.ritmo/usuarios/&lt;rol&gt;-&lt;usuario&gt;/musica.properties
+     */
+    private File userDataFile(String role, String userName) {
+        File folder = new File(System.getProperty("user.home"),
+                ".ritmo" + File.separator + "usuarios" + File.separator + role + "-" + userName);
+        return new File(folder, "musica.properties");
+    }
+
+    /**
+     * Guarda los datos, detiene la música, borra de la memoria todo lo del
+     * usuario y vuelve a la pantalla de inicio de sesión.
+     */
+    private void logout() {
+        saveMusicData();
+        musicDataStore = null;
+
+        audioPlayer.stop();
+        playbackQueue.clear();
+        frame.getMainPanel().getPlayPauseButton().setText("▶");
+        updateQueueControls();
+
+        ritmoSystem.getSongs().clear();
+        for (Song song : favoritesManager.getFavorites()) {
+            favoritesManager.unmarkFavorite(song);
+        }
+        playlistManager.getPlayLists().clear();
+        historyManager.clear();
+        openPlaylist = null;
+
+        shownSongs.clear();
+        frame.getExplorePanel().showResults(new ArrayList<>(), "Busca canciones o selecciona un género");
+        frame.getExplorePanel().setStatus(" ");
+        refreshFavorites();
+        refreshHistory();
+        refreshPlaylists();
+        refreshLibrary();
+
+        frame.showLogin();
     }
 
     private void wirePlaybackControls() {
@@ -168,29 +280,26 @@ public class Presenter implements ActionListener {
         // Mantiene la lista de favoritos actualizada y permite reproducirla como una
         // cola.
         FavoritesPanel panel = frame.getFavoritesPanel();
-        panel.showFavorites(favoriteRows());
+        panel.addSearchListener(event -> refreshFavorites());
         panel.addRemoveFavoriteListener(event -> {
-            int index;
-            try {
-                index = Integer.parseInt(event.getActionCommand());
-            } catch (NumberFormatException e) {
-                return;
-            }
-            List<Song> songs = favoritesManager.getFavorites();
-            if (index >= 0 && index < songs.size()) {
-                favoritesManager.unmarkFavorite(songs.get(index));
+            // El índice es el de la fila en la lista que se ve (puede estar filtrada)
+            int index = parseIndex(event.getActionCommand());
+            if (index >= 0 && index < shownFavorites.size()) {
+                favoritesManager.unmarkFavorite(shownFavorites.get(index));
                 refreshFavorites();
                 saveMusicData();
             }
         });
         panel.addPlayAllListener(event -> {
+            // Reproduce las favoritas que se están viendo, con o sin filtro
             playbackQueue.clear();
-            for (Song song : favoritesManager.getFavorites()) {
+            for (Song song : shownFavorites) {
                 playbackQueue.add(song);
             }
             updateQueueControls();
             playCurrent();
         });
+        refreshFavorites();
     }
 
     private void wireHistory() {
@@ -532,8 +641,16 @@ public class Presenter implements ActionListener {
     private void refreshFavorites() {
         // Refleja los cambios en Favoritos y actualiza los corazones de los resultados
         // visibles.
-        frame.getFavoritesPanel().showFavorites(favoriteRows());
-        frame.refreshTheme();
+        FavoritesPanel panel = frame.getFavoritesPanel();
+        List<Song> favorites = favoritesManager.getFavorites();
+        String query = SongValidator.normalize(panel.getQuery());
+        shownFavorites.clear();
+        for (Song song : favorites) {
+            if (query.isEmpty() || matchesFavoriteSearch(song, query)) {
+                shownFavorites.add(song);
+            }
+        }
+        panel.showFavorites(favoriteRows(), favorites.size());
         refreshLibrary();
         ExplorePanel explore = frame.getExplorePanel();
         for (int i = 0; i < shownSongs.size(); i++) {
@@ -541,9 +658,23 @@ public class Presenter implements ActionListener {
         }
     }
 
+    /**
+     * Indica si una favorita coincide con la búsqueda. Se busca en título,
+     * artista, álbum y género a la vez, sin importar mayúsculas.
+     */
+    private boolean matchesFavoriteSearch(Song song, String query) {
+        String[] fields = { song.getTitle(), song.getArtist(), song.getAlbum(), song.getGenre() };
+        for (String field : fields) {
+            if (SongValidator.normalize(field).contains(query)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private List<String[]> favoriteRows() {
         List<String[]> rows = new ArrayList<>();
-        for (Song song : favoritesManager.getFavorites()) {
+        for (Song song : shownFavorites) {
             rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(),
                     song.getGenre(), formatDuration(song.getDuration()) });
         }
@@ -905,6 +1036,9 @@ public class Presenter implements ActionListener {
      * cerrarse.
      */
     private void loadMusicData() {
+        if (musicDataStore == null) {
+            return; // nadie ha iniciado sesión
+        }
         MusicData data;
         try {
             data = musicDataStore.load();
@@ -950,6 +1084,9 @@ public class Presenter implements ActionListener {
      * ventana, así no se pierde nada aunque la aplicación se cierre de golpe.
      */
     private void saveMusicData() {
+        if (musicDataStore == null) {
+            return; // nadie ha iniciado sesión
+        }
         MusicData data = new MusicData();
         data.getLibrary().addAll(ritmoSystem.getSongs());
         data.getPlaylists().addAll(playlistManager.getPlayLists());
@@ -982,4 +1119,4 @@ public class Presenter implements ActionListener {
     public void saveInDirectory(String directoryPath) {
         persistenceManager.saveAllDataInDirectory(directoryPath);
     }
-}   
+}

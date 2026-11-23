@@ -1,11 +1,13 @@
 package co.edu.uptc.view;
 
-import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 /**
  * Ventana de la aplicación. Es la única clase de la vista que conoce el
@@ -22,7 +24,14 @@ public class ViewFrame extends JFrame {
     public static final String HISTORY = "HISTORY";
     public static final String SETTINGS = "SETTINGS";
 
+    // Nombres de las dos pantallas de la ventana
+    private static final String LOGIN_SCREEN = "LOGIN";
+    private static final String APP_SCREEN = "APP";
+
     private MainPanel mainPanel;
+    private RegisterPanel registerPanel;
+    /** Muestra una pantalla a la vez: inicio de sesión o la aplicación. */
+    private final CardLayout screens = new CardLayout();
 
     private boolean lightTheme =
             SettingsPanel.loadThemePreference();
@@ -46,19 +55,23 @@ public class ViewFrame extends JFrame {
         getContentPane().setBackground(
                 Palette.WINDOW_BACKGROUND);
 
-        getContentPane().setLayout(
-                new BorderLayout());
+        getContentPane().setLayout(screens);
 
         // La ventana puede recibir el foco cuando ningún campo de texto lo tiene
         getRootPane().setFocusable(true);
 
         mainPanel = new MainPanel();
 
-        getContentPane().add(
-                mainPanel, BorderLayout.CENTER);
+        // Pantalla de inicio de sesión: la tarjeta centrada sobre el fondo
+        registerPanel = new RegisterPanel();
+        MyPanel loginScreen = new MyPanel();
+        loginScreen.setBackgroundColor(Palette.BACKGROUND);
+        loginScreen.applyLayout(new GridBagLayout());
+        loginScreen.add(registerPanel);
 
-        // Paneles provisionales (SectionPanel)
-        // hasta que se diseñe cada sección
+        getContentPane().add(loginScreen, LOGIN_SCREEN);
+        getContentPane().add(mainPanel, APP_SCREEN);
+
 
         registerSection(
                 HOME,
@@ -104,6 +117,26 @@ public class ViewFrame extends JFrame {
 
         // Aplica el tema guardado al iniciar
         applyTheme(lightTheme);
+    }
+
+    /**
+     * Muestra la pantalla de inicio de sesión y pone el cursor en el usuario.
+     */
+    public void showLogin() {
+        screens.show(getContentPane(), LOGIN_SCREEN);
+        SwingUtilities.invokeLater(() -> registerPanel.getUserField().requestFocusInWindow());
+    }
+
+    /**
+     * Muestra la aplicación, empezando en Home.
+     */
+    public void showApp() {
+        screens.show(getContentPane(), APP_SCREEN);
+        showSection(HOME);
+    }
+
+    public RegisterPanel getRegisterPanel() {
+        return registerPanel;
     }
 
     private void registerSection(

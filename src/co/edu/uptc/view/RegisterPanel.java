@@ -14,8 +14,8 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 
 /**
- * Tarjeta de inicio de sesión y registro. Solo vista: los botones todavía no
- * hacen nada. Más adelante el Presenter los conecta usando los getters.
+ * Tarjeta de inicio de sesión y registro. Solo vista: el Presenter conecta los
+ * botones usando los getters y decide qué pasa al presionarlos.
  */
 public class RegisterPanel extends MyPanel {
 
@@ -39,6 +39,11 @@ public class RegisterPanel extends MyPanel {
     private JLabel errorLabel;
     private MyButton primaryButton;
     private MyButton secondaryButton;
+
+    /** true si la tarjeta está en modo "Crear cuenta". */
+    private boolean signUpMode;
+    /** true si está elegido el rol "Administrador". */
+    private boolean adminSelected;
 
     // Espacios que se ocultan junto con su componente
     private JComponent confirmSpacer;
@@ -167,8 +172,11 @@ public class RegisterPanel extends MyPanel {
      * @param admin true para elegir administrador, false para elegir usuario
      */
     public void selectRole(boolean admin) {
+        adminSelected = admin;
         paintRoleButton(adminRoleButton, admin);
         paintRoleButton(userRoleButton, !admin);
+        // Los colores de paintRoleButton son del tema oscuro; se ajustan al activo
+        ThemeManager.refresh(roleRow);
     }
 
     private void paintRoleButton(MyButton button, boolean selected) {
@@ -187,6 +195,7 @@ public class RegisterPanel extends MyPanel {
      * @param signUp true para registro, false para inicio de sesión
      */
     public void setSignUpMode(boolean signUp) {
+        signUpMode = signUp;
         userField.clear();
         passwordField.clear();
         confirmPasswordField.clear();
@@ -230,6 +239,29 @@ public class RegisterPanel extends MyPanel {
         errorSpacer.setVisible(false);
         revalidate();
         repaint();
+    }
+
+    public boolean isSignUpMode() {
+        return signUpMode;
+    }
+
+    public boolean isAdminSelected() {
+        return adminSelected;
+    }
+
+    /** Usuario escrito, tal cual. */
+    public String getUserName() {
+        return userField.getValue();
+    }
+
+    /** Contraseña escrita. */
+    public String getPasswordText() {
+        return passwordField.getValue();
+    }
+
+    /** Contraseña repetida (solo en modo "Crear cuenta"). */
+    public String getConfirmPasswordText() {
+        return confirmPasswordField.getValue();
     }
 
     // ---------------------------------------------------------------
