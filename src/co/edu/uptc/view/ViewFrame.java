@@ -74,7 +74,7 @@ public class ViewFrame extends JFrame {
 
         registerSection(
                 LIBRARY,
-                new SectionPanel("Biblioteca"),
+                new LibraryPanel(),
                 mainPanel.getLibraryButton());
 
         registerSection(
@@ -205,6 +205,12 @@ public class ViewFrame extends JFrame {
 
         return (HistoryPanel)
                 sectionPanels.get(HISTORY);
+    }
+
+    public LibraryPanel getLibraryPanel() {
+
+        return (LibraryPanel)
+                sectionPanels.get(LIBRARY);
     }
 
     public PlaylistPanel getPlaylistPanel() {

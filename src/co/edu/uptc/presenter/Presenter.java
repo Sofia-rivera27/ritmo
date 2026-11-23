@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -36,11 +37,13 @@ import co.edu.uptc.model.PlayList;
 import co.edu.uptc.model.PlaybackQueue;
 import co.edu.uptc.model.PlaylistManager;
 import co.edu.uptc.model.RitmoSystem;
+import co.edu.uptc.model.SearchCriteria;
 import co.edu.uptc.model.Song;
 import co.edu.uptc.model.UserStore;
 import co.edu.uptc.view.ExplorePanel;
 import co.edu.uptc.view.FavoritesPanel;
 import co.edu.uptc.view.HistoryPanel;
+import co.edu.uptc.view.LibraryPanel;
 import co.edu.uptc.view.PlaylistPanel;
 import co.edu.uptc.view.ViewFrame;
 
@@ -71,6 +74,8 @@ public class Presenter implements ActionListener {
     // Los botones de resultados envían índices; esta lista conserva su
     // correspondencia.
     private final List<Song> shownSongs = new ArrayList<>();
+    /** Canciones que se ven en Biblioteca, en el mismo orden (puede estar filtrada). */
+    private final List<Song> shownLibrarySongs = new ArrayList<>();
 
     public Presenter() {
         frame = new ViewFrame();
@@ -87,6 +92,7 @@ public class Presenter implements ActionListener {
         wireFavorites();
         wireHistory();
         wirePlaylists();
+        wireLibrary();
         // Carga lo guardado en la sesión anterior y lo guarda otra vez al cerrar
         loadMusicData();
         frame.addWindowListener(new WindowAdapter() {
@@ -153,7 +159,7 @@ public class Presenter implements ActionListener {
         panel.addPlaylistListener(event -> {
             Song song = getSongAt(panel, event.getActionCommand());
             if (song != null) {
-                addToPlaylist(song, panel);
+                addToPlaylist(song, panel::setStatus);
             }
         });
     }
@@ -297,7 +303,10 @@ public class Presenter implements ActionListener {
             saveMusicData();
         }
         String title = "Resultados: archivos MP3 · " + results.size();
-        showSongs(panel, results, title, importMessage(found.size(), added, repeated, invalid));
+        String message = importMessage(found.size(), added, repeated, invalid);
+        showSongs(panel, results, title, message);
+        refreshLibrary();
+        frame.getLibraryPanel().setStatus(message);
     }
 
     private Song findInLibrary(Song song) {
@@ -451,7 +460,14 @@ public class Presenter implements ActionListener {
                         : audioPlayer.getCurrentSong().getTitle());
     }
 
-    private void addToPlaylist(Song song, ExplorePanel panel) {
+    /**
+     * Pregunta a qué playlist agregar la canción (o permite crear una nueva) y
+     * la agrega.
+     *
+     * @param song   canción que se desea agregar
+     * @param status dónde mostrar el resultado, por ejemplo panel::setStatus
+     */
+    private void addToPlaylist(Song song, Consumer<String> status) {
         // Ofrece playlists existentes o permite crear una antes de agregar la canción.
         String createOption = "Nueva playlist...";
         List<String> options = new ArrayList<>();
@@ -478,11 +494,11 @@ public class Presenter implements ActionListener {
             return;
         }
         if (playlist.getSongs().contains(song)) {
-            panel.setStatus("Esa canción ya está en la playlist " + playlist.getName() + ".");
+            status.accept("Esa canción ya está en la playlist " + playlist.getName() + ".");
             return;
         }
         playlist.addSong(song);
-        panel.setStatus("Agregada a playlist: " + playlist.getName());
+        status.accept("Agregada a playlist: " + playlist.getName());
         refreshPlaylists();
         saveMusicData();
     }
@@ -518,6 +534,7 @@ public class Presenter implements ActionListener {
         // visibles.
         frame.getFavoritesPanel().showFavorites(favoriteRows());
         frame.refreshTheme();
+        refreshLibrary();
         ExplorePanel explore = frame.getExplorePanel();
         for (int i = 0; i < shownSongs.size(); i++) {
             explore.setFavorite(i, favoritesManager.isFavorite(shownSongs.get(i)));
@@ -598,6 +615,121 @@ public class Presenter implements ActionListener {
     private boolean isTyping() {
         Component focused = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
         return focused instanceof JTextComponent;
+    }
+
+    // ---------------------------------------------------------------
+    // Biblioteca
+    // ---------------------------------------------------------------
+
+    private void wireLibrary() {
+        LibraryPanel panel = frame.getLibraryPanel();
+        panel.addSearchListener(event -> refreshLibrary());
+        panel.addImportListener(event -> {
+            panel.setStatus("Leyendo archivos MP3...");
+            // Usa el mismo importador de Explorar; al terminar actualiza Biblioteca
+            selectMp3Files(frame.getExplorePanel());
+        });
+        panel.addPlayAllListener(event -> playLibrary());
+        panel.addPlayListener(event -> {
+            Song song = librarySongAt(event.getActionCommand());
+            if (song != null && !addToQueue(song, frame.getExplorePanel(), true)) {
+                panel.setStatus("No se puede reproducir \"" + song.getTitle()
+                        + "\": el archivo ya no existe en el computador.");
+            }
+        });
+        panel.addFavoriteListener(event -> {
+            Song song = librarySongAt(event.getActionCommand());
+            if (song == null) {
+                return;
+            }
+            if (favoritesManager.isFavorite(song)) {
+                favoritesManager.unmarkFavorite(song);
+            } else {
+                favoritesManager.markFavorite(song);
+            }
+            refreshFavorites(); // también actualiza Biblioteca
+            saveMusicData();
+        });
+        panel.addPlaylistListener(event -> {
+            Song song = librarySongAt(event.getActionCommand());
+            if (song != null) {
+                addToPlaylist(song, panel::setStatus);
+            }
+        });
+        panel.addRemoveListener(event -> removeFromLibrary(librarySongAt(event.getActionCommand())));
+        refreshLibrary();
+    }
+
+    /**
+     * Quita una canción de la biblioteca después de pedir confirmación. El
+     * archivo MP3 no se borra del computador, y la canción sigue en las
+     * playlists y en el historial donde ya estaba.
+     */
+    private void removeFromLibrary(Song song) {
+        if (song == null) {
+            return;
+        }
+        int answer = JOptionPane.showConfirmDialog(frame,
+                "¿Quitar \"" + song.getTitle() + "\" de la biblioteca?\n"
+                        + "El archivo no se borra de tu computador.",
+                "Quitar de la biblioteca", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) {
+            return;
+        }
+        ritmoSystem.removeSong(song);
+        if (favoritesManager.isFavorite(song)) {
+            favoritesManager.unmarkFavorite(song);
+        }
+        refreshFavorites(); // también actualiza Biblioteca
+        frame.getLibraryPanel().setStatus("Quitada de la biblioteca: " + song.getTitle());
+        saveMusicData();
+    }
+
+    /** Pone en la cola las canciones que se ven en Biblioteca y empieza a reproducir. */
+    private void playLibrary() {
+        playbackQueue.clear();
+        int skipped = 0;
+        for (Song song : shownLibrarySongs) {
+            if (!playbackQueue.add(song)) {
+                skipped++;
+            }
+        }
+        updateQueueControls();
+        LibraryPanel panel = frame.getLibraryPanel();
+        if (playbackQueue.size() == 0) {
+            panel.setStatus("Ninguna de estas canciones se puede reproducir (archivos no encontrados).");
+            return;
+        }
+        playCurrent();
+        panel.setStatus(skipped == 0 ? "Reproduciendo " + playbackQueue.size() + " canciones"
+                : "Reproduciendo " + playbackQueue.size() + " canciones · " + skipped
+                        + " no se encontraron en el computador");
+    }
+
+    /**
+     * Vuelve a mostrar la biblioteca: todas las canciones o, si hay algo
+     * escrito en el buscador, solo las que coinciden con el criterio elegido.
+     */
+    private void refreshLibrary() {
+        LibraryPanel panel = frame.getLibraryPanel();
+        String query = panel.getQuery();
+        SearchCriteria criteria = panel.getCriteria();
+        List<Song> songs = query.isEmpty() ? ritmoSystem.getSongs() : ritmoSystem.searchSongs(query, criteria);
+
+        shownLibrarySongs.clear();
+        shownLibrarySongs.addAll(songs);
+
+        List<String[]> rows = new ArrayList<>();
+        for (Song song : shownLibrarySongs) {
+            rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(), song.getGenre(),
+                    formatDuration(song.getDuration()), favoritesManager.isFavorite(song) ? "1" : "0" });
+        }
+        panel.showSongs(rows, ritmoSystem.getSongs().size());
+    }
+
+    private Song librarySongAt(String command) {
+        int index = parseIndex(command);
+        return index >= 0 && index < shownLibrarySongs.size() ? shownLibrarySongs.get(index) : null;
     }
 
     // ---------------------------------------------------------------
@@ -850,4 +982,4 @@ public class Presenter implements ActionListener {
     public void saveInDirectory(String directoryPath) {
         persistenceManager.saveAllDataInDirectory(directoryPath);
     }
-}
+}   
