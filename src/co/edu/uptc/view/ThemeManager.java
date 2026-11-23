@@ -67,6 +67,11 @@ public final class ThemeManager {
 
 			label.setForeground(mapText(label.getForeground(), light));
 
+		} else if (component instanceof MyTextField) {
+
+			// Pinta su propio fondo, así que cambia sus colores él mismo
+			((MyTextField) component).applyTheme(light);
+
 		} else if (component instanceof JTextComponent) {
 
 			JTextComponent field = (JTextComponent) component;

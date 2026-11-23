@@ -86,6 +86,37 @@ public class MyTextField extends JPasswordField {
         repaint();
     }
 
+    /**
+     * Cambia los colores del campo según el tema. Este campo pinta su propio
+     * fondo, por eso ThemeManager no lo puede cambiar con setBackground.
+     *
+     * @param light true para el tema claro
+     */
+    public void applyTheme(boolean light) {
+        backgroundColor = swap(backgroundColor, Palette.FIELD, LIGHT_FIELD, light);
+        borderColor = swap(borderColor, Palette.FIELD_BORDER, LIGHT_FIELD_BORDER, light);
+        placeholderColor = swap(placeholderColor, Palette.TEXT_MUTED, LIGHT_PLACEHOLDER, light);
+        setForeground(swap(getForeground(), Palette.TEXT, LIGHT_TEXT, light));
+        setCaretColor(light ? LIGHT_TEXT : Palette.TEXT);
+        repaint();
+    }
+
+    /** Devuelve el color del tema pedido si el actual es uno de los dos conocidos. */
+    private Color swap(Color current, Color dark, Color lightColor, boolean light) {
+        if (light && dark.equals(current)) {
+            return lightColor;
+        }
+        if (!light && lightColor.equals(current)) {
+            return dark;
+        }
+        return current;
+    }
+
+    private static final Color LIGHT_FIELD = new Color(238, 238, 238);
+    private static final Color LIGHT_FIELD_BORDER = new Color(210, 210, 210);
+    private static final Color LIGHT_PLACEHOLDER = new Color(105, 105, 105);
+    private static final Color LIGHT_TEXT = new Color(35, 35, 35);
+
     public void setCornerRadius(int cornerRadius) {
         this.cornerRadius = cornerRadius;
         repaint();
