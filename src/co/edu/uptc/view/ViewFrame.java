@@ -26,12 +26,15 @@ public class ViewFrame extends JFrame implements IFrame {
     /** Muestra una pantalla a la vez: inicio de sesión o la aplicación. */
     private final CardLayout screens = new CardLayout();
 
-    private boolean lightTheme = SettingsPanel.loadThemePreference();
+    private boolean lightTheme =
+            SettingsPanel.loadThemePreference();
 
     /** Panel y botón del menú de cada sección, según su comando de acción. */
-    private final Map<String, MyPanel> sectionPanels = new LinkedHashMap<>();
+    private final Map<String, MyPanel> sectionPanels =
+            new LinkedHashMap<>();
 
-    private final Map<String, MyButton> sectionButtons = new LinkedHashMap<>();
+    private final Map<String, MyButton> sectionButtons =
+            new LinkedHashMap<>();
 
     public ViewFrame() {
 
@@ -61,6 +64,7 @@ public class ViewFrame extends JFrame implements IFrame {
 
         getContentPane().add(loginScreen, LOGIN_SCREEN);
         getContentPane().add(mainPanel, APP_SCREEN);
+
 
         registerSection(
                 HOME,
@@ -191,8 +195,7 @@ public class ViewFrame extends JFrame implements IFrame {
 
         lightTheme = light;
 
-        // Lo guarda para las pantallas que repintan cosas después
-        // (ThemeManager.refresh)
+        // Lo guarda para las pantallas que repintan cosas después (ThemeManager.refresh)
         ThemeManager.setCurrentTheme(light);
 
         ThemeManager.apply(
@@ -212,15 +215,18 @@ public class ViewFrame extends JFrame implements IFrame {
         return lightTheme;
     }
 
+    @Override
     public SettingsPanel getSettingsPanel() {
 
-        return (SettingsPanel) sectionPanels.get(SETTINGS);
+        return (SettingsPanel)
+                sectionPanels.get(SETTINGS);
     }
 
     @Override
     public ExplorePanel getExplorePanel() {
 
-        return (ExplorePanel) sectionPanels.get(EXPLORE);
+        return (ExplorePanel)
+                sectionPanels.get(EXPLORE);
     }
 
     @Override
@@ -231,25 +237,29 @@ public class ViewFrame extends JFrame implements IFrame {
     @Override
     public FavoritesPanel getFavoritesPanel() {
 
-        return (FavoritesPanel) sectionPanels.get(FAVORITES);
+        return (FavoritesPanel)
+                sectionPanels.get(FAVORITES);
     }
 
     @Override
     public HistoryPanel getHistoryPanel() {
 
-        return (HistoryPanel) sectionPanels.get(HISTORY);
+        return (HistoryPanel)
+                sectionPanels.get(HISTORY);
     }
 
     @Override
     public LibraryPanel getLibraryPanel() {
 
-        return (LibraryPanel) sectionPanels.get(LIBRARY);
+        return (LibraryPanel)
+                sectionPanels.get(LIBRARY);
     }
 
     @Override
     public PlaylistPanel getPlaylistPanel() {
 
-        return (PlaylistPanel) sectionPanels.get(PLAYLISTS);
+        return (PlaylistPanel)
+                sectionPanels.get(PLAYLISTS);
     }
 
     /**

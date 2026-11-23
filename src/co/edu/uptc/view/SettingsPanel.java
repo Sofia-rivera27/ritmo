@@ -1,4 +1,3 @@
-
 package co.edu.uptc.view;
 
 import java.awt.BorderLayout;
@@ -16,7 +15,6 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JColorChooser;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 /**
@@ -37,6 +35,11 @@ public class SettingsPanel extends MyPanel {
 
     private final Consumer<Boolean> themeListener;
     private boolean lightTheme;
+
+    // Tarjeta "Mi cuenta": se llena con setAccount al iniciar sesión
+    private JLabel accountNameLabel;
+    private JLabel accountRoleLabel;
+    private MyButton logoutButton;
 
     public static boolean loadThemePreference() {
         return Preferences.userNodeForPackage(SettingsPanel.class)
@@ -189,34 +192,36 @@ public class SettingsPanel extends MyPanel {
         account.setLayout(
                 new BoxLayout(account, BoxLayout.Y_AXIS));
 
-        JLabel currentUser = new JLabel("Usuario local");
-        currentUser.setForeground(Palette.TEXT);
+        // Nombre y tipo de cuenta; el Presenter los cambia con setAccount
+        accountNameLabel = new JLabel(" ");
+        accountNameLabel.setForeground(Palette.TEXT);
+        accountNameLabel.setFont(new Font(
+                Palette.FONT_FAMILY, Font.BOLD, 14));
 
-        account.add(currentUser);
+        accountRoleLabel = new JLabel(" ");
+        accountRoleLabel.setForeground(Palette.TEXT_MUTED);
+        accountRoleLabel.setFont(new Font(
+                Palette.FONT_FAMILY, Font.PLAIN, 11));
+
+        account.add(accountNameLabel);
+        account.add(Box.createVerticalStrut(4));
+        account.add(accountRoleLabel);
         account.add(Box.createVerticalStrut(12));
 
-        MyButton logout = new MyButton(
+        // El Presenter decide qué pasa al presionarlo (getLogoutButton)
+        logoutButton = new MyButton(
                 "Cerrar sesión",
                 Palette.CARD,
                 Palette.TEXT,
                 Palette.CARD_BORDER);
 
-        logout.setFixedSize(125, 32);
-
-        logout.addActionListener(e ->
-                JOptionPane.showMessageDialog(
-                        this,
-                        "La autenticación y el cierre de sesión "
-                        + "se conectarán cuando esté implementado "
-                        + "el inicio de sesión.",
-                        "Cuenta",
-                        JOptionPane.INFORMATION_MESSAGE));
+        logoutButton.setFixedSize(125, 32);
 
         JPanel buttonRow = new JPanel(
                 new FlowLayout(FlowLayout.RIGHT, 0, 0));
 
         buttonRow.setOpaque(false);
-        buttonRow.add(logout);
+        buttonRow.add(logoutButton);
 
         account.add(buttonRow);
 
@@ -225,6 +230,32 @@ public class SettingsPanel extends MyPanel {
         column.add(account);
 
         return column;
+    }
+
+    /**
+     * Muestra en la tarjeta "Mi cuenta" quién inició sesión.
+     *
+     * @param userName nombre del usuario, o null si nadie ha iniciado sesión
+     * @param admin    true si entró como administrador
+     */
+    public void setAccount(String userName, boolean admin) {
+        if (userName == null) {
+            accountNameLabel.setText(" ");
+            accountRoleLabel.setText(" ");
+            return;
+        }
+        accountNameLabel.setText(userName);
+        accountRoleLabel.setText(admin ? "Cuenta de administrador"
+                : "Cuenta de usuario · tus datos se guardan en este computador");
+    }
+
+    /**
+     * Botón "Cerrar sesión" de la tarjeta "Mi cuenta".
+     *
+     * @return el botón, para que el Presenter le ponga su acción
+     */
+    public MyButton getLogoutButton() {
+        return logoutButton;
     }
 
     private MyPanel createCard(String heading) {

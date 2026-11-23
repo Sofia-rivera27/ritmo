@@ -63,6 +63,8 @@ public interface IFrame {
 
     HistoryPanel getHistoryPanel();
 
+    SettingsPanel getSettingsPanel();
+
     // ---------------------------------------------------------------
     // Ventana (JFrame ya trae estos métodos)
     // ---------------------------------------------------------------
