@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Lista de reproducción. Guarda canciones y permite agregarlas, eliminarlas y consultarlas.
+ * Lista de reproducción. Guarda canciones y permite agregarlas, eliminarlas y
+ * consultarlas.
  *
  * @author SofiaValentinaG
  */
@@ -24,15 +25,6 @@ public class PlayList {
     public PlayList(String name) {
         this.name = name;
         this.songs = new ArrayList<>();
-    }
-
-    /**
-     * Obtiene esta lista de reproducción.
-     *
-     * @return objeto actual de PlayList
-     */
-    public PlayList getPlayList() {
-        return this;
     }
 
     /**
