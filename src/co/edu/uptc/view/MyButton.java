@@ -190,6 +190,10 @@ public class MyButton extends JButton {
             else if (bg.equals(new Color(48, 48, 48)))
                 bg = new Color(220, 220, 220);
 
+            // Círculos de artistas y álbumes de la pantalla Home
+            else if (bg.equals(new Color(41, 41, 41)))
+                bg = new Color(230, 230, 230);
+
         } else {
 
             if (bg.equals(Color.WHITE))
@@ -200,6 +204,9 @@ public class MyButton extends JButton {
 
             else if (bg.equals(new Color(220, 220, 220)))
                 bg = new Color(48, 48, 48);
+
+            else if (bg.equals(new Color(230, 230, 230)))
+                bg = new Color(41, 41, 41);
         }
 
         // El texto claro sobre un fondo transparente o blanco no se vería en el

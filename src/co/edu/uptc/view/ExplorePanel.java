@@ -99,6 +99,7 @@ public class ExplorePanel extends MyPanel {
                 if (searchField.getText().equals("Buscar por artista, género o canción...")) {
                     searchField.setText("");
                     searchField.setForeground(Palette.TEXT);
+                    ThemeManager.refresh(searchField);
                 }
             }
 
@@ -107,6 +108,7 @@ public class ExplorePanel extends MyPanel {
                 if (searchField.getText().isBlank()) {
                     searchField.setText("Buscar por artista, género o canción...");
                     searchField.setForeground(Palette.TEXT_MUTED);
+                    ThemeManager.refresh(searchField);
                 }
             }
         });
@@ -183,6 +185,7 @@ public class ExplorePanel extends MyPanel {
             button.addActionListener(event -> {
                 searchField.setText(genre);
                 searchField.setForeground(Palette.TEXT);
+                ThemeManager.refresh(searchField);
                 updateGenreButtons(genre);
                 fire(genreListener, genre);
             });
@@ -340,6 +343,9 @@ public class ExplorePanel extends MyPanel {
                 genreMode ? Palette.TEXT : Palette.TEXT_DARK, null);
         genreModeButton.setColors(genreMode ? Palette.ACCENT : Palette.CARD,
                 genreMode ? Palette.TEXT_DARK : Palette.TEXT, null);
+        // Los colores de arriba son del tema oscuro; se ajustan al tema activo
+        ThemeManager.refresh(artistModeButton);
+        ThemeManager.refresh(genreModeButton);
         revalidate();
         repaint();
     }
@@ -351,6 +357,7 @@ public class ExplorePanel extends MyPanel {
             button.setColors(selected ? Palette.ACCENT : Palette.CARD,
                     selected ? Palette.TEXT_DARK : Palette.TEXT, null);
         }
+        ThemeManager.refresh(genreOptions);
     }
 
     private void selectRow(int index) {
@@ -358,6 +365,7 @@ public class ExplorePanel extends MyPanel {
         for (int i = 0; i < songRows.size(); i++) {
             songRows.get(i).setBackgroundColor(i == index ? Palette.CARD_BORDER : Palette.CARD);
         }
+        ThemeManager.refresh(songsList);
     }
 
     private void fire(ActionListener listener, String command) {
@@ -415,6 +423,8 @@ public class ExplorePanel extends MyPanel {
             songsList.add(Box.createVerticalStrut(6));
         }
         resultTitle.setText(title);
+        // Las filas nuevas se crean con colores del tema oscuro
+        ThemeManager.refresh(songsList);
         songsList.revalidate();
         songsList.repaint();
     }
@@ -423,6 +433,7 @@ public class ExplorePanel extends MyPanel {
         if (index >= 0 && index < favoriteButtons.size()) {
             favoriteButtons.get(index).setText(favorite ? "♥" : "♡");
             favoriteButtons.get(index).setForeground(favorite ? Palette.ACCENT : Palette.TEXT_MUTED);
+            ThemeManager.refresh(favoriteButtons.get(index));
         }
     }
 
@@ -473,6 +484,7 @@ public class ExplorePanel extends MyPanel {
         buttons.add(close);
         content.add(buttons, BorderLayout.SOUTH);
         dialog.setContentPane(content);
+        ThemeManager.refresh(content);
         dialog.pack();
         dialog.setLocationRelativeTo(javax.swing.SwingUtilities.getWindowAncestor(this));
         dialog.setVisible(true);
