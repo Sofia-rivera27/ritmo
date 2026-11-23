@@ -13,7 +13,7 @@ import javafx.util.Duration;
 /**
  * Reproduce y controla archivos MP3 locales y transmisiones HTTP.
  */
-public class AudioPlayer implements Runnable {
+public class AudioPlayer {
 
     private static final int MAX_VOLUME = 100;
 
@@ -25,8 +25,10 @@ public class AudioPlayer implements Runnable {
     private volatile String lastError;
     // Evita que una respuesta tardia de una pista anterior reemplace la actual.
     private final AtomicLong playRequest = new AtomicLong();
-    private Consumer<String> errorListener = message -> {};
-    private Runnable endListener = () -> {};
+    private Consumer<String> errorListener = message -> {
+    };
+    private Runnable endListener = () -> {
+    };
     private int volume = 50;
 
     public void play(Song song) throws Exception {
@@ -85,12 +87,11 @@ public class AudioPlayer implements Runnable {
                         endListener.run();
                     }
                 });
-                player.currentTimeProperty().addListener((observable, oldValue, newValue) ->
-                        {
-                            if (request == playRequest.get()) {
-                                progress = (int) newValue.toSeconds();
-                            }
-                        });
+                player.currentTimeProperty().addListener((observable, oldValue, newValue) -> {
+                    if (request == playRequest.get()) {
+                        progress = (int) newValue.toSeconds();
+                    }
+                });
                 player.setOnError(() -> {
                     if (mediaPlayer == player && request == playRequest.get()) {
                         reportError(player.getError());
@@ -111,7 +112,8 @@ public class AudioPlayer implements Runnable {
 
     private static void startJavaFx() {
         try {
-            Platform.startup(() -> {});
+            Platform.startup(() -> {
+            });
         } catch (IllegalStateException alreadyStarted) {
             // JavaFX was started by the metadata reader or another player.
         }
@@ -215,17 +217,5 @@ public class AudioPlayer implements Runnable {
 
     public void setEndListener(Runnable listener) {
         endListener = Objects.requireNonNull(listener);
-    }
-
-    @Override
-    public void run() {
-        while (mediaPlayer != null) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
-        }
     }
 }

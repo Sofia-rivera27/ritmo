@@ -46,6 +46,8 @@ public class ExplorePanel extends MyPanel {
     private final MyPanel songsList = new MyPanel();
     private final List<MyPanel> songRows = new ArrayList<>();
     private final List<MyButton> favoriteButtons = new ArrayList<>();
+    /** Círculo con la inicial del usuario que inició sesión. */
+    private MyButton avatar;
     private final JLabel resultTitle = new JLabel("Busca canciones o selecciona un género");
     private final JLabel status = new JLabel(" ");
     private final MyButton mp3Button = new MyButton("Importar MP3",
@@ -122,7 +124,7 @@ public class ExplorePanel extends MyPanel {
         searchBox.add(searchField, BorderLayout.CENTER);
         searchBar.add(searchBox, BorderLayout.CENTER);
 
-        MyButton avatar = new MyButton("L", Palette.ACCENT, Palette.TEXT_DARK, null);
+        avatar = new MyButton(" ", Palette.ACCENT, Palette.TEXT_DARK, null);
         avatar.setFixedSize(40, 40);
         avatar.setCornerRadius(20);
         avatar.setFontStyle(Font.BOLD, 14);
@@ -218,6 +220,9 @@ public class ExplorePanel extends MyPanel {
 
         songsList.applyLayout(new BoxLayout(songsList, BoxLayout.Y_AXIS));
         songsList.setBackgroundColor(Palette.BACKGROUND);
+        // Sin tamaño fijo: la lista mide lo que miden sus filas, así el scroll
+        // aparece solo cuando hacen falta y deja ver todos los resultados
+        songsList.setPreferredSize(null);
         JScrollPane scroll = new JScrollPane(songsList);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(Palette.BACKGROUND);
@@ -435,6 +440,16 @@ public class ExplorePanel extends MyPanel {
             favoriteButtons.get(index).setForeground(favorite ? Palette.ACCENT : Palette.TEXT_MUTED);
             ThemeManager.refresh(favoriteButtons.get(index));
         }
+    }
+
+    /**
+     * Muestra en el círculo de arriba la inicial del usuario.
+     *
+     * @param userName nombre del usuario que inició sesión
+     */
+    public void setUserName(String userName) {
+        avatar.setText(FavoritesPanel.initialOf(userName));
+        avatar.setToolTipText(userName);
     }
 
     public void setStatus(String message) {

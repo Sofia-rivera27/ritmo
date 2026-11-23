@@ -53,13 +53,16 @@ public class FavoritesPanel extends MyPanel {
     private MyPanel songList;
 
     private final List<MyButton> removeButtons = new ArrayList<>();
+    /** Círculo con la inicial del usuario que inició sesión. */
+    private MyButton avatar;
     private ActionListener removeListener;
     private ActionListener searchListener;
     /** true mientras el buscador muestra el texto de ayuda y no algo escrito. */
     private boolean showingPlaceholder = true;
 
     /**
-     * Construye el panel de favoritos: barra superior, cuerpo y canciones de prueba.
+     * Construye el panel de favoritos: barra superior y cuerpo. Las canciones
+     * las pone el Presenter con showFavorites.
      */
     public FavoritesPanel() {
         setBackgroundColor(Palette.BACKGROUND);
@@ -70,7 +73,6 @@ public class FavoritesPanel extends MyPanel {
         add(createTopBar(), BorderLayout.NORTH);
         add(createBody(), BorderLayout.CENTER);
 
-        loadSampleData();
     }
 
     /**
@@ -139,7 +141,7 @@ public class FavoritesPanel extends MyPanel {
         });
         searchBox.add(searchField, BorderLayout.CENTER);
 
-        MyButton avatar = new MyButton("L", Palette.ACCENT, Palette.TEXT_DARK, null);
+        avatar = new MyButton(" ", Palette.ACCENT, Palette.TEXT_DARK, null);
         avatar.setFixedSize(40, 40);
         avatar.setCornerRadius(20); // la mitad del tamaño forma un círculo
         avatar.setFontStyle(Font.BOLD, 14);
@@ -192,7 +194,8 @@ public class FavoritesPanel extends MyPanel {
     }
 
     /**
-     * Crea el encabezado con el título de favoritos y el botón para reproducir todo.
+     * Crea el encabezado con el título de favoritos y el botón para reproducir
+     * todo.
      *
      * @return panel del encabezado
      */
@@ -244,8 +247,10 @@ public class FavoritesPanel extends MyPanel {
     /**
      * Construye la fila que muestra una canción favorita.
      *
-     * @param song  datos de la canción, en orden: título, artista, álbum, género y duración
-     * @param index posición de la canción en la lista; se usa para mostrar el número
+     * @param song  datos de la canción, en orden: título, artista, álbum, género y
+     *              duración
+     * @param index posición de la canción en la lista; se usa para mostrar el
+     *              número
      *              y como comando de acción del botón quitar
      * @return panel que representa la canción
      */
@@ -470,14 +475,17 @@ public class FavoritesPanel extends MyPanel {
         playAllButton.addActionListener(listener);
     }
 
-    /** Datos de prueba. Luego el Presenter los reemplaza llamando a showFavorites. */
-    private void loadSampleData() {
-        List<String[]> samples = new ArrayList<>();
-        samples.add(new String[] { "Amanecer", "Los Cantores", "Horizonte", "Pop", "3:41" });
-        samples.add(new String[] { "Noches de Neón", "Vera Luz", "Ciudad", "Electrónica", "3:42" });
-        samples.add(new String[] { "Camino Largo", "Mateo Rivas", "Raíces", "Folk", "3:43" });
-        samples.add(new String[] { "Fuego Lento", "Dúo Ámbar", "Brasas", "Rock", "3:44" });
-        samples.add(new String[] { "Marea", "Sol y Sal", "Costa", "Indie", "3:45" });
-        showFavorites(samples);
+    /**
+     * Muestra en el círculo de arriba la inicial del usuario.
+     *
+     * @param userName nombre del usuario que inició sesión
+     */
+    public void setUserName(String userName) {
+        avatar.setText(initialOf(userName));
+        avatar.setToolTipText(userName);
+    }
+
+    static String initialOf(String userName) {
+        return userName == null || userName.isBlank() ? " " : userName.trim().substring(0, 1).toUpperCase();
     }
 }

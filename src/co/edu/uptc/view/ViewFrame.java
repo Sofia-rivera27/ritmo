@@ -1,6 +1,7 @@
 package co.edu.uptc.view;
 
 import java.awt.CardLayout;
+import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.util.LinkedHashMap;
@@ -10,19 +11,11 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
 /**
- * Ventana de la aplicación. Es la única clase de la vista que conoce el
- * Presenter. Aquí viven el panel principal y el panel de cada sección.
+ * Ventana de la aplicación. Implementa IFrame, que es lo único que conoce el
+ * Presenter. Aquí viven el panel principal y el panel de cada sección. Los
+ * comandos del menú (HOME, EXPLORE...) están definidos en IFrame.
  */
-public class ViewFrame extends JFrame {
-
-    // Comandos de acción de los botones del menú
-    public static final String HOME = "HOME";
-    public static final String EXPLORE = "EXPLORE";
-    public static final String LIBRARY = "LIBRARY";
-    public static final String FAVORITES = "FAVORITES";
-    public static final String PLAYLISTS = "PLAYLISTS";
-    public static final String HISTORY = "HISTORY";
-    public static final String SETTINGS = "SETTINGS";
+public class ViewFrame extends JFrame implements IFrame {
 
     // Nombres de las dos pantallas de la ventana
     private static final String LOGIN_SCREEN = "LOGIN";
@@ -33,19 +26,16 @@ public class ViewFrame extends JFrame {
     /** Muestra una pantalla a la vez: inicio de sesión o la aplicación. */
     private final CardLayout screens = new CardLayout();
 
-    private boolean lightTheme =
-            SettingsPanel.loadThemePreference();
+    private boolean lightTheme = SettingsPanel.loadThemePreference();
 
     /** Panel y botón del menú de cada sección, según su comando de acción. */
-    private final Map<String, MyPanel> sectionPanels =
-            new LinkedHashMap<>();
+    private final Map<String, MyPanel> sectionPanels = new LinkedHashMap<>();
 
-    private final Map<String, MyButton> sectionButtons =
-            new LinkedHashMap<>();
+    private final Map<String, MyButton> sectionButtons = new LinkedHashMap<>();
 
     public ViewFrame() {
 
-        super("Aplicacion Musica");
+        super("Ritmo");
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 800);
@@ -71,7 +61,6 @@ public class ViewFrame extends JFrame {
 
         getContentPane().add(loginScreen, LOGIN_SCREEN);
         getContentPane().add(mainPanel, APP_SCREEN);
-
 
         registerSection(
                 HOME,
@@ -122,6 +111,7 @@ public class ViewFrame extends JFrame {
     /**
      * Muestra la pantalla de inicio de sesión y pone el cursor en el usuario.
      */
+    @Override
     public void showLogin() {
         screens.show(getContentPane(), LOGIN_SCREEN);
         SwingUtilities.invokeLater(() -> registerPanel.getUserField().requestFocusInWindow());
@@ -130,11 +120,18 @@ public class ViewFrame extends JFrame {
     /**
      * Muestra la aplicación, empezando en Home.
      */
+    @Override
     public void showApp() {
         screens.show(getContentPane(), APP_SCREEN);
         showSection(HOME);
     }
 
+    @Override
+    public Component getDialogParent() {
+        return this;
+    }
+
+    @Override
     public RegisterPanel getRegisterPanel() {
         return registerPanel;
     }
@@ -156,6 +153,7 @@ public class ViewFrame extends JFrame {
      *
      * @param listener listener de los botones del menú
      */
+    @Override
     public void addMenuListener(ActionListener listener) {
 
         for (MyButton button : sectionButtons.values()) {
@@ -170,6 +168,7 @@ public class ViewFrame extends JFrame {
      *
      * @param section comando de acción de la sección
      */
+    @Override
     public void showSection(String section) {
 
         MyPanel panel = sectionPanels.get(section);
@@ -192,7 +191,8 @@ public class ViewFrame extends JFrame {
 
         lightTheme = light;
 
-        // Lo guarda para las pantallas que repintan cosas después (ThemeManager.refresh)
+        // Lo guarda para las pantallas que repintan cosas después
+        // (ThemeManager.refresh)
         ThemeManager.setCurrentTheme(light);
 
         ThemeManager.apply(
@@ -214,48 +214,49 @@ public class ViewFrame extends JFrame {
 
     public SettingsPanel getSettingsPanel() {
 
-        return (SettingsPanel)
-                sectionPanels.get(SETTINGS);
+        return (SettingsPanel) sectionPanels.get(SETTINGS);
     }
 
+    @Override
     public ExplorePanel getExplorePanel() {
 
-        return (ExplorePanel)
-                sectionPanels.get(EXPLORE);
+        return (ExplorePanel) sectionPanels.get(EXPLORE);
     }
 
+    @Override
     public MainPanel getMainPanel() {
         return mainPanel;
     }
 
+    @Override
     public FavoritesPanel getFavoritesPanel() {
 
-        return (FavoritesPanel)
-                sectionPanels.get(FAVORITES);
+        return (FavoritesPanel) sectionPanels.get(FAVORITES);
     }
 
+    @Override
     public HistoryPanel getHistoryPanel() {
 
-        return (HistoryPanel)
-                sectionPanels.get(HISTORY);
+        return (HistoryPanel) sectionPanels.get(HISTORY);
     }
 
+    @Override
     public LibraryPanel getLibraryPanel() {
 
-        return (LibraryPanel)
-                sectionPanels.get(LIBRARY);
+        return (LibraryPanel) sectionPanels.get(LIBRARY);
     }
 
+    @Override
     public PlaylistPanel getPlaylistPanel() {
 
-        return (PlaylistPanel)
-                sectionPanels.get(PLAYLISTS);
+        return (PlaylistPanel) sectionPanels.get(PLAYLISTS);
     }
 
     /**
      * Vuelve a aplicar el tema actual. Se usa después de crear filas nuevas
      * en una lista, porque se crean con los colores del tema oscuro.
      */
+    @Override
     public void refreshTheme() {
         applyTheme(lightTheme);
     }

@@ -6,13 +6,16 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.function.IntConsumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+import javax.swing.event.ChangeEvent;
 
 /**
  * Panel principal de la aplicación: menú a la izquierda, contenido en el centro
@@ -24,7 +27,12 @@ public class MainPanel extends MyPanel {
     private static final int MENU_WIDTH = 220;
     private static final int MENU_BUTTON_HEIGHT = 44;
     private static final int MENU_FONT_SIZE = 14;
-    private static final int FOOTER_HEIGHT = 90;
+    private static final int FOOTER_HEIGHT = 96;
+    private static final int NOW_PLAYING_WIDTH = 240;
+    private static final int PROGRESS_WIDTH = 460;
+    private static final int TIME_LABEL_WIDTH = 42;
+    private static final String NOTHING_PLAYING = "Nada sonando";
+    private static final String NOTHING_PLAYING_HINT = "Elige una canción para empezar";
 
     private MyPanel menu;
     private MyPanel footer;
@@ -42,6 +50,17 @@ public class MainPanel extends MyPanel {
     private MyButton nextButton;
     private MyButton previousButton;
     private MyButton queueButton;
+
+    // "Sonando ahora", progreso y volumen
+    private JLabel nowPlayingTitle;
+    private JLabel nowPlayingArtist;
+    private JLabel elapsedLabel;
+    private JLabel totalLabel;
+    private MySlider progressSlider;
+    private MySlider volumeSlider;
+    private JLabel volumeLabel;
+    /** true mientras el usuario arrastra la barra de progreso. */
+    private boolean seeking;
 
     private JLabel sessionLabel;
     private MyButton logoutButton;
@@ -154,28 +173,136 @@ public class MainPanel extends MyPanel {
     // ---------------------------------------------------------------
     private void createFooter() {
         footer = new MyPanel();
-        footer.setLayout(new BorderLayout());
+        footer.setLayout(new BorderLayout(16, 0));
         footer.setBackgroundColor(Palette.CARD);
         footer.setPreferredSize(new Dimension(0, FOOTER_HEIGHT));
+        footer.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 16));
 
+        footer.add(createNowPlaying(), BorderLayout.WEST);
+        footer.add(createPlayerControls(), BorderLayout.CENTER);
+        footer.add(createVolumeControls(), BorderLayout.EAST);
+    }
+
+    /** Izquierda: título y artista de la canción que suena. */
+    private MyPanel createNowPlaying() {
+        nowPlayingTitle = createFooterLabel(NOTHING_PLAYING, Palette.TEXT, Font.BOLD, 13);
+        nowPlayingArtist = createFooterLabel(NOTHING_PLAYING_HINT, Palette.TEXT_MUTED, Font.PLAIN, 11);
+        // Ancho fijo: si el título es muy largo, Swing lo corta con "..."
+        nowPlayingTitle.setPreferredSize(new Dimension(NOW_PLAYING_WIDTH, 18));
+        nowPlayingArtist.setPreferredSize(new Dimension(NOW_PLAYING_WIDTH, 16));
+
+        MyPanel texts = createFooterPanel();
+        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
+        texts.add(nowPlayingTitle);
+        texts.add(Box.createVerticalStrut(3));
+        texts.add(nowPlayingArtist);
+        return centerVertically(texts);
+    }
+
+    /** Centro: botones de reproducción y, debajo, la barra de progreso. */
+    private MyPanel createPlayerControls() {
         previousButton = createControlButton("⏮", Palette.TEXT);
         playPauseButton = createControlButton("▶", Palette.ACCENT);
         nextButton = createControlButton("⏭", Palette.TEXT);
 
-        MyPanel controls = new MyPanel();
-        controls.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 20));
-        controls.setBackgroundColor(Palette.CARD);
-        controls.add(previousButton);
-        controls.add(playPauseButton);
-        controls.add(nextButton);
-        footer.add(controls, BorderLayout.CENTER);
+        MyPanel buttons = createFooterPanel();
+        buttons.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        buttons.add(previousButton);
+        buttons.add(playPauseButton);
+        buttons.add(nextButton);
+
+        elapsedLabel = createFooterLabel("0:00", Palette.TEXT_MUTED, Font.PLAIN, 11);
+        elapsedLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        elapsedLabel.setPreferredSize(new Dimension(TIME_LABEL_WIDTH, 16));
+        totalLabel = createFooterLabel("0:00", Palette.TEXT_MUTED, Font.PLAIN, 11);
+        totalLabel.setPreferredSize(new Dimension(TIME_LABEL_WIDTH, 16));
+
+        progressSlider = new MySlider(0, 1, 0);
+        progressSlider.setEnabled(false);
+        progressSlider.setToolTipText("Arrastra para adelantar o retroceder");
+        // Mientras se arrastra, el tiempo de la izquierda muestra a dónde se va a
+        // saltar
+        progressSlider.addChangeListener(this::previewSeek);
+
+        MyPanel progress = createFooterPanel();
+        progress.setLayout(new BorderLayout(10, 0));
+        progress.setPreferredSize(new Dimension(PROGRESS_WIDTH, 18));
+        progress.add(elapsedLabel, BorderLayout.WEST);
+        progress.add(progressSlider, BorderLayout.CENTER);
+        progress.add(totalLabel, BorderLayout.EAST);
+
+        MyPanel column = createFooterPanel();
+        column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
+        buttons.setAlignmentX(Component.CENTER_ALIGNMENT);
+        progress.setAlignmentX(Component.CENTER_ALIGNMENT);
+        progress.setMaximumSize(new Dimension(PROGRESS_WIDTH, 18));
+        column.add(buttons);
+        column.add(Box.createVerticalStrut(6));
+        column.add(progress);
+        return centerVertically(column);
+    }
+
+    /** Derecha: volumen y botón de la cola. */
+    private MyPanel createVolumeControls() {
+        JLabel volumeTitle = createFooterLabel("Vol.", Palette.TEXT_MUTED, Font.PLAIN, 11);
+
+        volumeSlider = new MySlider(0, 100, 50);
+        volumeSlider.setPreferredSize(new Dimension(110, 18));
+        volumeSlider.setToolTipText("Volumen");
+
+        volumeLabel = createFooterLabel("50%", Palette.TEXT_MUTED, Font.PLAIN, 11);
+        volumeLabel.setPreferredSize(new Dimension(34, 16));
+        volumeSlider.addChangeListener(event -> volumeLabel.setText(volumeSlider.getValue() + "%"));
 
         // Mantiene el acceso a la cola en el reproductor, como en el diseño.
         queueButton = new MyButton("Cola", Palette.CARD, Palette.TEXT, Palette.CARD_BORDER);
         queueButton.setFixedSize(72, 34);
         queueButton.setFontStyle(Font.PLAIN, 11);
         queueButton.setToolTipText("Mostrar cola de reproducción");
-        footer.add(queueButton, BorderLayout.EAST);
+
+        MyPanel row = createFooterPanel();
+        row.setLayout(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        row.add(volumeTitle);
+        row.add(volumeSlider);
+        row.add(volumeLabel);
+        row.add(Box.createHorizontalStrut(8));
+        row.add(queueButton);
+        return centerVertically(row);
+    }
+
+    private MyPanel createFooterPanel() {
+        MyPanel panel = new MyPanel();
+        panel.setBackgroundColor(Palette.CARD);
+        panel.setPreferredSize(null);
+        return panel;
+    }
+
+    private JLabel createFooterLabel(String text, Color color, int style, int size) {
+        JLabel label = new JLabel(text);
+        label.setForeground(color);
+        label.setFont(new Font(Palette.FONT_FAMILY, style, size));
+        return label;
+    }
+
+    /** Envuelve un componente para centrarlo verticalmente en la barra. */
+    private MyPanel centerVertically(MyPanel inner) {
+        MyPanel wrapper = createFooterPanel();
+        wrapper.setLayout(new GridBagLayout());
+        wrapper.add(inner);
+        return wrapper;
+    }
+
+    private void previewSeek(ChangeEvent event) {
+        if (progressSlider.getValueIsAdjusting()) {
+            seeking = true;
+            elapsedLabel.setText(formatTime(progressSlider.getValue()));
+        }
+    }
+
+    /** Convierte segundos al formato m:ss, por ejemplo 125 → "2:05". */
+    private String formatTime(int seconds) {
+        int safe = Math.max(0, seconds);
+        return String.format("%d:%02d", safe / 60, safe % 60);
     }
 
     private MyButton createControlButton(String symbol, Color color) {
@@ -227,6 +354,81 @@ public class MainPanel extends MyPanel {
             button.setColors(Palette.TRANSPARENT, Palette.TEXT_MUTED, null);
             button.setFontStyle(Font.PLAIN, MENU_FONT_SIZE);
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Sonando ahora, progreso y volumen (los usa el Presenter)
+    // ---------------------------------------------------------------
+
+    /**
+     * Muestra la canción que está sonando. Si el título es null, muestra
+     * "Nada sonando" y desactiva la barra de progreso.
+     *
+     * @param title  título de la canción, o null si no suena nada
+     * @param artist artista de la canción
+     */
+    public void showNowPlaying(String title, String artist) {
+        boolean playing = title != null;
+        nowPlayingTitle.setText(playing ? title : NOTHING_PLAYING);
+        nowPlayingArtist.setText(playing ? artist : NOTHING_PLAYING_HINT);
+        // Muestra el nombre completo al pasar el mouse, por si no cabe
+        nowPlayingTitle.setToolTipText(playing ? title + " - " + artist : null);
+        progressSlider.setEnabled(playing);
+        if (!playing) {
+            showProgress(0, 0);
+        }
+    }
+
+    /**
+     * Actualiza la barra de progreso y los tiempos. Si el usuario está
+     * arrastrando la barra, no la mueve para no pelear con él.
+     *
+     * @param elapsed segundos que ya sonaron
+     * @param total   duración total en segundos (0 si todavía no se sabe)
+     */
+    public void showProgress(int elapsed, int total) {
+        if (seeking || progressSlider.getValueIsAdjusting()) {
+            return;
+        }
+        int max = Math.max(1, total);
+        progressSlider.setMaximum(max);
+        progressSlider.setValue(Math.min(Math.max(0, elapsed), max));
+        elapsedLabel.setText(formatTime(elapsed));
+        totalLabel.setText(formatTime(total));
+    }
+
+    /**
+     * Registra lo que pasa cuando el usuario suelta la barra de progreso.
+     *
+     * @param listener recibe el segundo al que se quiere saltar
+     */
+    public void addSeekListener(IntConsumer listener) {
+        progressSlider.addChangeListener(event -> {
+            if (seeking && !progressSlider.getValueIsAdjusting()) {
+                seeking = false;
+                listener.accept(progressSlider.getValue());
+            }
+        });
+    }
+
+    /**
+     * Registra lo que pasa cuando el usuario mueve el volumen.
+     *
+     * @param listener recibe el volumen nuevo, de 0 a 100
+     */
+    public void addVolumeListener(IntConsumer listener) {
+        volumeSlider.addChangeListener(event -> listener.accept(volumeSlider.getValue()));
+    }
+
+    /**
+     * Pone el volumen en la barra, por ejemplo al abrir la aplicación con el
+     * volumen guardado. Llámalo antes de addVolumeListener.
+     *
+     * @param volume volumen de 0 a 100
+     */
+    public void setVolume(int volume) {
+        volumeSlider.setValue(Math.max(0, Math.min(100, volume)));
+        volumeLabel.setText(volumeSlider.getValue() + "%");
     }
 
     public MyButton getHomeButton() {
