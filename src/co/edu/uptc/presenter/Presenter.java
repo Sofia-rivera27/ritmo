@@ -26,6 +26,7 @@ import javax.swing.KeyStroke;
 import javax.swing.Timer;
 import javax.swing.text.JTextComponent;
 
+
 import co.edu.uptc.model.AudioPlayer;
 import co.edu.uptc.model.FavoritesManager;
 import co.edu.uptc.model.HistoryEntry;
@@ -53,6 +54,8 @@ import co.edu.uptc.view.PlaylistPanel;
 import co.edu.uptc.view.RegisterPanel;
 import co.edu.uptc.view.ViewFrame;
 
+
+
 /**
  * Coordina la vista y los servicios del modelo para búsquedas, reproducción,
  * cola y gestión de favoritos y playlists.
@@ -67,9 +70,7 @@ public class Presenter implements ActionListener {
 
     /** La vista. El Presenter solo la conoce por la interfaz IFrame. */
     private final IFrame frame;
-    /**
-     * El modelo de canciones. El Presenter solo lo conoce por la interfaz IModel.
-     */
+    /** El modelo de canciones. El Presenter solo lo conoce por la interfaz IModel. */
     private final IModel model;
     private final UserStore userStore;
     private final PersistenceManager persistenceManager;
@@ -88,13 +89,9 @@ public class Presenter implements ActionListener {
     // Los botones de resultados envían índices; esta lista conserva su
     // correspondencia.
     private final List<Song> shownSongs = new ArrayList<>();
-    /**
-     * Canciones que se ven en Biblioteca, en el mismo orden (puede estar filtrada).
-     */
+    /** Canciones que se ven en Biblioteca, en el mismo orden (puede estar filtrada). */
     private final List<Song> shownLibrarySongs = new ArrayList<>();
-    /**
-     * Favoritas que se ven en Favoritos, en el mismo orden (puede estar filtrada).
-     */
+    /** Favoritas que se ven en Favoritos, en el mismo orden (puede estar filtrada). */
     private final List<Song> shownFavorites = new ArrayList<>();
 
     public Presenter() {
@@ -153,7 +150,9 @@ public class Presenter implements ActionListener {
         panel.getSecondaryButton().addActionListener(event -> panel.setSignUpMode(!panel.isSignUpMode()));
         panel.getUserRoleButton().addActionListener(event -> panel.selectRole(false));
         panel.getAdminRoleButton().addActionListener(event -> panel.selectRole(true));
+        // Los dos botones de "Cerrar sesión" (menú y Configuración) hacen lo mismo
         frame.getMainPanel().getLogoutButton().addActionListener(event -> logout());
+        frame.getSettingsPanel().getLogoutButton().addActionListener(event -> logout());
     }
 
     /** Botón "Ingresar" o "Registrarse", según el modo de la tarjeta. */
@@ -194,6 +193,7 @@ public class Presenter implements ActionListener {
         musicDataStore = new MusicDataStore(userDataFile(role, userName));
         loadMusicData();
         frame.getMainPanel().setSessionUser(userName, UserStore.ROLE_ADMIN.equals(role));
+        frame.getSettingsPanel().setAccount(userName, UserStore.ROLE_ADMIN.equals(role));
         frame.getExplorePanel().setUserName(userName);
         frame.getFavoritesPanel().setUserName(userName);
         frame.getRegisterPanel().setSignUpMode(false); // limpia los campos
@@ -201,8 +201,7 @@ public class Presenter implements ActionListener {
     }
 
     /**
-     * Archivo de datos de un usuario:
-     * ~/.ritmo/usuarios/&lt;rol&gt;-&lt;usuario&gt;/musica.properties
+     * Archivo de datos de un usuario: ~/.ritmo/usuarios/&lt;rol&gt;-&lt;usuario&gt;/musica.properties
      */
     private File userDataFile(String role, String userName) {
         File folder = new File(System.getProperty("user.home"),
@@ -242,6 +241,7 @@ public class Presenter implements ActionListener {
 
         frame.getExplorePanel().setUserName(null);
         frame.getFavoritesPanel().setUserName(null);
+        frame.getSettingsPanel().setAccount(null, false);
         frame.showLogin();
     }
 
@@ -392,8 +392,7 @@ public class Presenter implements ActionListener {
             }
         });
         panel.addClearListener(event -> {
-            int answer = JOptionPane.showConfirmDialog(frame.getDialogParent(),
-                    "¿Seguro que quieres borrar el historial?",
+            int answer = JOptionPane.showConfirmDialog(frame.getDialogParent(), "¿Seguro que quieres borrar el historial?",
                     "Borrar historial", JOptionPane.YES_NO_OPTION);
             if (answer == JOptionPane.YES_OPTION) {
                 historyManager.clear();
@@ -696,8 +695,7 @@ public class Presenter implements ActionListener {
     private PlayList askNewPlaylist() {
         String name = "";
         while (true) {
-            name = (String) JOptionPane.showInputDialog(frame.getDialogParent(), "Nombre de la playlist:",
-                    "Nueva playlist",
+            name = (String) JOptionPane.showInputDialog(frame.getDialogParent(), "Nombre de la playlist:", "Nueva playlist",
                     JOptionPane.PLAIN_MESSAGE, null, null, name);
             if (name == null) {
                 return null;
@@ -892,10 +890,7 @@ public class Presenter implements ActionListener {
         saveMusicData();
     }
 
-    /**
-     * Pone en la cola las canciones que se ven en Biblioteca y empieza a
-     * reproducir.
-     */
+    /** Pone en la cola las canciones que se ven en Biblioteca y empieza a reproducir. */
     private void playLibrary() {
         playbackQueue.clear();
         int skipped = 0;
@@ -1023,9 +1018,7 @@ public class Presenter implements ActionListener {
         saveMusicData();
     }
 
-    /**
-     * Pone en la cola las canciones de la playlist abierta y empieza a reproducir.
-     */
+    /** Pone en la cola las canciones de la playlist abierta y empieza a reproducir. */
     private void playOpenPlaylist() {
         if (openPlaylist == null) {
             return;
@@ -1093,9 +1086,7 @@ public class Presenter implements ActionListener {
         return index >= 0 && index < songs.size() ? songs.get(index) : null;
     }
 
-    /**
-     * Convierte el comando de un botón en índice; devuelve -1 si no es un número.
-     */
+    /** Convierte el comando de un botón en índice; devuelve -1 si no es un número. */
     private int parseIndex(String command) {
         try {
             return Integer.parseInt(command);
