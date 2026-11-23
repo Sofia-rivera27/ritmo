@@ -1,4 +1,3 @@
-
 package co.edu.uptc.view;
 
 import java.awt.Color;
@@ -6,6 +5,7 @@ import java.awt.Component;
 import java.awt.Container;
 
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.text.JTextComponent;
 
 /**
@@ -13,7 +13,36 @@ import javax.swing.text.JTextComponent;
  */
 public final class ThemeManager {
 
+	/** Tema activo; lo actualiza ViewFrame cada vez que se cambia el tema. */
+	private static boolean lightTheme = false;
+
 	private ThemeManager() {
+	}
+
+	/**
+	 * Guarda cuál es el tema activo, para que refresh sepa qué colores usar.
+	 *
+	 * @param light true para el tema claro
+	 */
+	public static void setCurrentTheme(boolean light) {
+		lightTheme = light;
+	}
+
+	public static boolean isLightTheme() {
+		return lightTheme;
+	}
+
+	/**
+	 * Vuelve a aplicar el tema activo a un componente y a todo lo que tiene
+	 * dentro. Se usa cuando una pantalla crea o repinta componentes después
+	 * de haber cambiado el tema (por ejemplo, filas de resultados nuevas o un
+	 * botón que se acaba de seleccionar), porque esos componentes se pintan
+	 * con los colores del tema oscuro.
+	 *
+	 * @param component componente que se desea actualizar
+	 */
+	public static void refresh(Component component) {
+		apply(component, lightTheme);
 	}
 
 	public static void apply(Component component, boolean light) {
@@ -44,9 +73,21 @@ public final class ThemeManager {
 
 			field.setBackground(light ? Color.WHITE : Palette.FIELD);
 
-			field.setForeground(light ? new Color(25, 25, 25) : Palette.TEXT);
+			// Se convierte el color actual en vez de forzar uno solo, así el
+			// texto de ayuda (gris) se sigue distinguiendo de lo escrito
+			field.setForeground(mapText(field.getForeground(), light));
 
 			field.setCaretColor(light ? Color.BLACK : Palette.TEXT);
+
+		} else if (component instanceof JList) {
+
+			// Las listas (por ejemplo la de la cola) necesitan cambiar también
+			// el color del texto, o quedaría texto blanco sobre fondo blanco
+			JList<?> list = (JList<?>) component;
+
+			list.setBackground(map(list.getBackground(), light));
+
+			list.setForeground(mapText(list.getForeground(), light));
 
 		} else if (component instanceof Container) {
 
@@ -79,8 +120,10 @@ public final class ThemeManager {
 			if (color.equals(new Color(18, 18, 18)))
 				return new Color(248, 248, 248);
 
+			// Tarjetas y barra de controles. Usan un blanco propio (252) para
+			// que al volver al tema oscuro recuperen su gris y no queden negras.
 			if (color.equals(new Color(28, 28, 28)))
-				return Color.WHITE;
+				return new Color(252, 252, 252);
 
 			if (color.equals(new Color(48, 48, 48)))
 				return new Color(220, 220, 220);
@@ -90,6 +133,13 @@ public final class ThemeManager {
 
 			if (color.equals(new Color(52, 52, 52)))
 				return new Color(210, 210, 210);
+
+			// Colores propios de la pantalla Home (fondo y círculos)
+			if (color.equals(new Color(17, 17, 17)))
+				return new Color(242, 242, 242);
+
+			if (color.equals(new Color(41, 41, 41)))
+				return new Color(230, 230, 230);
 
 		} else {
 
@@ -102,7 +152,7 @@ public final class ThemeManager {
 			if (color.equals(new Color(248, 248, 248)))
 				return new Color(18, 18, 18);
 
-			if (color.equals(new Color(255, 255, 255)))
+			if (color.equals(new Color(252, 252, 252)))
 				return new Color(28, 28, 28);
 
 			if (color.equals(new Color(220, 220, 220)))
@@ -113,6 +163,12 @@ public final class ThemeManager {
 
 			if (color.equals(new Color(210, 210, 210)))
 				return new Color(52, 52, 52);
+
+			if (color.equals(new Color(242, 242, 242)))
+				return new Color(17, 17, 17);
+
+			if (color.equals(new Color(230, 230, 230)))
+				return new Color(41, 41, 41);
 		}
 
 		return color;
@@ -124,16 +180,30 @@ public final class ThemeManager {
 			return null;
 		}
 
-		if (light && (color.equals(new Color(235, 235, 235)) || color.equals(new Color(150, 150, 150)))) {
-
-			return new Color(35, 35, 35);
+		// Texto principal: claro en el tema oscuro, oscuro en el claro
+		if (light && color.equals(DARK_TEXT)) {
+			return LIGHT_TEXT;
 		}
 
-		if (!light && (color.equals(new Color(35, 35, 35)) || color.equals(new Color(90, 90, 90)))) {
+		if (!light && color.equals(LIGHT_TEXT)) {
+			return DARK_TEXT;
+		}
 
-			return new Color(235, 235, 235);
+		// Texto secundario (gris): tiene su propio color en cada tema, así
+		// al volver al tema oscuro sigue siendo gris y no queda blanco
+		if (light && color.equals(DARK_MUTED_TEXT)) {
+			return LIGHT_MUTED_TEXT;
+		}
+
+		if (!light && color.equals(LIGHT_MUTED_TEXT)) {
+			return DARK_MUTED_TEXT;
 		}
 
 		return color;
 	}
+
+	private static final Color DARK_TEXT = new Color(235, 235, 235);
+	private static final Color LIGHT_TEXT = new Color(35, 35, 35);
+	private static final Color DARK_MUTED_TEXT = new Color(150, 150, 150);
+	private static final Color LIGHT_MUTED_TEXT = new Color(105, 105, 105);
 }

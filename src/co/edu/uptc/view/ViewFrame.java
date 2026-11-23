@@ -7,6 +7,10 @@ import java.util.Map;
 
 import javax.swing.JFrame;
 
+/**
+ * Ventana de la aplicación. Es la única clase de la vista que conoce el
+ * Presenter. Aquí viven el panel principal y el panel de cada sección.
+ */
 public class ViewFrame extends JFrame {
 
     // Comandos de acción de los botones del menú
@@ -23,7 +27,7 @@ public class ViewFrame extends JFrame {
     private boolean lightTheme =
             SettingsPanel.loadThemePreference();
 
-
+    /** Panel y botón del menú de cada sección, según su comando de acción. */
     private final Map<String, MyPanel> sectionPanels =
             new LinkedHashMap<>();
 
@@ -45,7 +49,7 @@ public class ViewFrame extends JFrame {
         getContentPane().setLayout(
                 new BorderLayout());
 
-
+        // La ventana puede recibir el foco cuando ningún campo de texto lo tiene
         getRootPane().setFocusable(true);
 
         mainPanel = new MainPanel();
@@ -53,12 +57,16 @@ public class ViewFrame extends JFrame {
         getContentPane().add(
                 mainPanel, BorderLayout.CENTER);
 
+        // Paneles provisionales (SectionPanel)
+        // hasta que se diseñe cada sección
 
         registerSection(
                 HOME,
                 new HomePanel(),
                 mainPanel.getHomeButton());
 
+        // Explorar concentra la búsqueda,
+        // los filtros y los resultados de Jamendo.
         registerSection(
                 EXPLORE,
                 new ExplorePanel(),
@@ -94,6 +102,7 @@ public class ViewFrame extends JFrame {
 
         showSection(HOME);
 
+        // Aplica el tema guardado al iniciar
         applyTheme(lightTheme);
     }
 
@@ -108,6 +117,12 @@ public class ViewFrame extends JFrame {
         sectionButtons.put(command, button);
     }
 
+    /**
+     * Pone al listener (el Presenter) a escuchar
+     * los botones del menú.
+     *
+     * @param listener listener de los botones del menú
+     */
     public void addMenuListener(ActionListener listener) {
 
         for (MyButton button : sectionButtons.values()) {
@@ -116,7 +131,12 @@ public class ViewFrame extends JFrame {
         }
     }
 
-
+    /**
+     * Muestra el panel de una sección y resalta
+     * su botón del menú.
+     *
+     * @param section comando de acción de la sección
+     */
     public void showSection(String section) {
 
         MyPanel panel = sectionPanels.get(section);
@@ -128,18 +148,25 @@ public class ViewFrame extends JFrame {
             mainPanel.selectButton(
                     sectionButtons.get(section));
 
+            // Deja el foco en la ventana y no en el buscador de la sección,
+            // para que la barra espaciadora pause la música en vez de escribir.
             getRootPane().requestFocusInWindow();
         }
     }
 
+    /** Aplica el tema elegido a todas las pantallas. */
     public void applyTheme(boolean light) {
 
         lightTheme = light;
 
+        // Lo guarda para las pantallas que repintan cosas después (ThemeManager.refresh)
+        ThemeManager.setCurrentTheme(light);
+
         ThemeManager.apply(
                 getContentPane(), light);
 
-
+        // Las secciones que no están en pantalla no hacen parte del
+        // contentPane, así que se les aplica el tema por separado.
         for (MyPanel panel : sectionPanels.values()) {
             ThemeManager.apply(panel, light);
         }
@@ -186,6 +213,10 @@ public class ViewFrame extends JFrame {
                 sectionPanels.get(PLAYLISTS);
     }
 
+    /**
+     * Vuelve a aplicar el tema actual. Se usa después de crear filas nuevas
+     * en una lista, porque se crean con los colores del tema oscuro.
+     */
     public void refreshTheme() {
         applyTheme(lightTheme);
     }
