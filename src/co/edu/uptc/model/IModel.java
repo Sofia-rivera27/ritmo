@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * Operaciones del modelo que usa el Presenter.
+ * @author programacion 2
  */
 public interface IModel {
 

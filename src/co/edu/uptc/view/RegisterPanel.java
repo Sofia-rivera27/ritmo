@@ -16,6 +16,7 @@ import javax.swing.JLabel;
 /**
  * Tarjeta de inicio de sesión y registro. Solo vista: el Presenter conecta los
  * botones usando los getters y decide qué pasa al presionarlos.
+ * @author programacion 2
  */
 public class RegisterPanel extends MyPanel {
 

@@ -13,6 +13,7 @@ import javax.swing.JPanel;
 /**
  * Panel con esquinas redondeadas y borde de 1 píxel opcionales. El fondo lo
  * pinta esta clase para poder redondear las esquinas.
+ * @author programacion 2
  */
 public class MyPanel extends JPanel {
 

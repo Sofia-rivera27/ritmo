@@ -14,6 +14,7 @@ import javax.swing.SwingUtilities;
  * Ventana de la aplicación. Implementa IFrame, que es lo único que conoce el
  * Presenter. Aquí viven el panel principal y el panel de cada sección. Los
  * comandos del menú (HOME, EXPLORE...) están definidos en IFrame.
+ * @author programacion 2
  */
 public class ViewFrame extends JFrame implements IFrame {
 

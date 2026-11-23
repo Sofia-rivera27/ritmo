@@ -8,6 +8,7 @@ import java.util.Map;
  * <p>
  * Solo guarda los datos: crear, renombrar y borrar playlists lo hace
  * {@link PlaylistManager}, que es el que usa la aplicación.
+ * @author programacion 2
  */
 public class Library {
 

@@ -7,7 +7,7 @@ import java.util.List;
  * Lista de reproducción. Guarda canciones y permite agregarlas, eliminarlas y
  * consultarlas.
  *
- * @author SofiaValentinaG
+ * @author programacion 2
  */
 public class PlayList {
 

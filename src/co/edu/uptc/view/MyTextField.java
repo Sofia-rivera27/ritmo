@@ -16,6 +16,7 @@ import javax.swing.JPasswordField;
 /**
  * Campo de texto con fondo redondeado y texto de ayuda (placeholder). Si
  * isPassword es true, oculta lo que se escribe.
+ * @author programacion 2
  */
 public class MyTextField extends JPasswordField {
 

@@ -10,6 +10,7 @@ import javax.swing.JRootPane;
  * Lo que el Presenter necesita de la ventana. El Presenter trabaja con esta
  * interfaz y no con ViewFrame, así la vista se puede cambiar (o reemplazar por
  * una de prueba) sin tocar el Presenter.
+ * @author programacion 2
  */
 public interface IFrame {
 

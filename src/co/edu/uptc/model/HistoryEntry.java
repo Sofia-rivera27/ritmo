@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 /**
  * Registro de una reproducción: la canción que sonó y el momento en que
  * empezó a sonar.
+ * @author programacion 2
  */
 public class HistoryEntry {
 

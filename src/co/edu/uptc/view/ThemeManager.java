@@ -10,6 +10,7 @@ import javax.swing.text.JTextComponent;
 
 /**
  * Aplica el tema claro u oscuro al árbol de componentes Swing existente.
+ * @author programacion 2
  */
 public final class ThemeManager {
 

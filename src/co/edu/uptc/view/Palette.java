@@ -5,6 +5,7 @@ import java.awt.Color;
 /**
  * Colores que comparten todas las pantallas de la aplicación. Si cambias un
  * color aquí, cambia en todas partes.
+ * @author programacion 2
  */
 public final class Palette {
 

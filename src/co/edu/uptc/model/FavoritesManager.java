@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Administra las canciones favoritas de la biblioteca: agrega, elimina y consulta.
  *
- * @author SofiaValentinaG
+ * @author programacion 2
  * @version 1.0
  */
 public class FavoritesManager {

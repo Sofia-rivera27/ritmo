@@ -11,6 +11,7 @@ import java.util.List;
  * de portada, carpetas autorizadas, duplicados y duración. Todas las
  * validaciones lanzan IllegalArgumentException con el mensaje que ve el
  * usuario.
+ * @author programacion 2
  */
 public class SongValidator {
 

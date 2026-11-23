@@ -2,6 +2,7 @@ package co.edu.uptc.model;
 
 /**
  * Cuenta de usuario oyente. Cada oyente tiene su propia biblioteca musical.
+ * @author programacion 2
  */
 public class UserListener extends User {
 

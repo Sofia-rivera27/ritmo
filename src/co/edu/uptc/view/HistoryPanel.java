@@ -24,6 +24,7 @@ import javax.swing.JScrollPane;
  * <p>
  * Solo vista: avisa las acciones del usuario mediante listeners, pero no tiene
  * la lógica para reproducir canciones ni para borrar el historial.
+ * @author programacion 2
  */
 public class HistoryPanel extends MyPanel {
 

@@ -2,7 +2,10 @@ package co.edu.uptc.model;
 
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * @author programacion 2
+ * MusicData
+ */
 
 public class MusicData {
 

@@ -20,6 +20,7 @@ import javafx.scene.media.MediaPlayer;
 /**
  * Catálogo de canciones. Detecta archivos .mp3, lee sus metadatos con JavaFX
  * y permite buscar entre las canciones cargadas.
+ * @author programacion 2
  */
 public class Model implements IModel {
 

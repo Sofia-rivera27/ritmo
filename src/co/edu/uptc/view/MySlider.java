@@ -19,6 +19,7 @@ import javax.swing.plaf.basic.BasicSliderUI;
  * Al hacer clic en cualquier punto de la barra salta directo a ese punto (el
  * JSlider normal solo avanza de a poquitos). Mientras el usuario arrastra,
  * {@link #getValueIsAdjusting()} es true; al soltar pasa a false.
+ * @author programacion 2
  */
 public class MySlider extends JSlider {
 

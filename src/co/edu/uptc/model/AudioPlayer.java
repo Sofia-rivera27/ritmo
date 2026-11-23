@@ -12,6 +12,7 @@ import javafx.util.Duration;
 
 /**
  * Reproduce y controla archivos MP3 locales y transmisiones HTTP.
+ * @author programacion 2
  */
 public class AudioPlayer {
 

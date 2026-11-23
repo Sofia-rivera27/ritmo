@@ -6,6 +6,7 @@ import co.edu.uptc.presenter.Presenter;
 
 /**
  * Punto de entrada de la aplicación.
+ * @author programacion 2
  */
 public class Run {
 

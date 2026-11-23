@@ -6,7 +6,7 @@ import java.util.List;
 /**
  * Administra las listas de reproducción: las crea, renombra, elimina y consulta.
  *
- * @author SofiaValentinaG
+ * @author programacion 2
  */
 public class PlaylistManager {
 

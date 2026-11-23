@@ -16,6 +16,7 @@ import javax.swing.JButton;
 /**
  * Botón con esquinas redondeadas y efecto al pasar el mouse y al presionarlo.
  * El fondo lo pinta esta clase en lugar del estilo por defecto de Swing.
+ * @author programacion 2
  */
 public class MyButton extends JButton {
 

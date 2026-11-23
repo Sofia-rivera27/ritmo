@@ -21,6 +21,7 @@ import javax.swing.event.ChangeEvent;
  * Panel principal de la aplicación: menú a la izquierda, contenido en el centro
  * y controles de reproducción abajo. Solo vista: el Presenter decide qué
  * pasa al presionar un botón.
+ * @author programacion 2
  */
 public class MainPanel extends MyPanel {
 

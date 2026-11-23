@@ -19,7 +19,10 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
-
+/**
+ * @author programacion 2
+ * PlaylistPanel
+ */
 public class PlaylistPanel extends MyPanel {
 
     private static final Color ICON_BOX = new Color(40, 40, 40);

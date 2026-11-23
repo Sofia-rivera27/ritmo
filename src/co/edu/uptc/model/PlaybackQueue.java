@@ -1,13 +1,14 @@
 package co.edu.uptc.model;
 
-import java.util.ArrayList;
 import java.io.File;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Cola simple de reproduccion. Mantiene el orden de las canciones y la
  * posicion actual sin acoplarse a Swing.
+ * @author programacion 2
  */
 public class PlaybackQueue {
 

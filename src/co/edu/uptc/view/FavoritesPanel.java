@@ -29,7 +29,7 @@ import javax.swing.event.DocumentListener;
  * <p>
  * Muestra la información y avisa las acciones del usuario mediante listeners,
  * pero no tiene la lógica para eliminar ni reproducir canciones.
- *
+ *  @author programacion 2
  * 
  */
 public class FavoritesPanel extends MyPanel {

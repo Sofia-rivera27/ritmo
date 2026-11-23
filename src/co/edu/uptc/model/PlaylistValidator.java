@@ -6,6 +6,7 @@ import java.util.Collection;
  * Validaciones de las playlists: nombre, nombres repetidos, y canciones que se
  * agregan o se quitan. Todas las validaciones lanzan IllegalArgumentException
  * con el mensaje que ve el usuario.
+ * @author programacion 2
  */
 public class PlaylistValidator {
 

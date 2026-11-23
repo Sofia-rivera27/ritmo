@@ -8,6 +8,7 @@ import java.util.List;
  * Administra el historial de reproducción. Guarda las canciones de la más
  * reciente a la más antigua y conserva como máximo {@link #MAX_ENTRIES}
  * registros.
+ * @author programacion 2
  */
 public class HistoryManager {
 

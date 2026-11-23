@@ -14,6 +14,7 @@ import javax.swing.JLabel;
 
 /**
  * Sección de inicio: una fila de artistas recomendados y una fila de álbumes.
+ * @author programacion 2
  */
 public class HomePanel extends MyPanel {
 

@@ -3,6 +3,7 @@ package co.edu.uptc.model;
 /**
  * Campo por el que se buscan canciones. Cada valor tiene el texto que ve el
  * usuario, así que se puede poner directamente en un JComboBox.
+ * @author programacion 2
  */
 public enum SearchCriteria {
 

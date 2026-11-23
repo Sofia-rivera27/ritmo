@@ -34,6 +34,7 @@ import co.edu.uptc.model.SearchCriteria;
  * Solo vista: avisa las acciones del usuario mediante listeners. El comando de
  * acción de los botones de cada fila es el índice de esa fila (0, 1, 2...)
  * dentro de la lista que se está mostrando, que puede estar filtrada.
+ * @author programacion 2
  */
 public class LibraryPanel extends MyPanel {
 

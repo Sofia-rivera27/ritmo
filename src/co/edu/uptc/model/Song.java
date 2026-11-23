@@ -7,6 +7,7 @@ import java.util.Objects;
  * Canción con sus datos, la ruta de su archivo de audio y si está marcada
  * como favorita. Dos canciones son iguales si tienen el mismo título y
  * artista (sin importar mayúsculas ni espacios extra).
+ * @author programacion 2
  */
 public class Song {
 

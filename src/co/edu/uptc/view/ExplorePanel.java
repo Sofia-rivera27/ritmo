@@ -27,11 +27,14 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.SwingConstants;
 import javax.swing.JTextField;
+import javax.swing.SwingConstants;
 
 import co.edu.uptc.model.Song;
-
+/**
+ * @author programacion 2
+ * ExplorePanel
+ */
 public class ExplorePanel extends MyPanel {
 
     private static final String[] GENRES = { "Pop", "Rock", "Electrónica", "Folk", "Indie", "Jazz" };

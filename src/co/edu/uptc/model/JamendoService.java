@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 /**
  * Consultas basicas a la API publica de Jamendo.
+ * @author programacion 2
  */
 public class JamendoService {
 

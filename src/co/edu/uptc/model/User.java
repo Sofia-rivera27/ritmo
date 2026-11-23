@@ -2,6 +2,7 @@ package co.edu.uptc.model;
 
 /**
  * Cuenta base con nombre y contraseña.
+ * @author programacion 2
  */
 public class User {
 

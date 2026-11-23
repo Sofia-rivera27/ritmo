@@ -4,6 +4,7 @@ import java.io.File;
 
 /**
  * Guarda todos los datos de la aplicación (usuarios y bibliotecas) en la misma carpeta.
+ * @author programacion 2
  */
 public class PersistenceManager {
 

@@ -2,8 +2,8 @@ package co.edu.uptc.view;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -20,6 +20,7 @@ import javax.swing.JPanel;
 /**
  * Panel funcional de configuración: tema, colores por género y atajos.
  * La vista comunica los cambios al Presenter mediante callbacks.
+ * @author programacion 2
  */
 public class SettingsPanel extends MyPanel {
 

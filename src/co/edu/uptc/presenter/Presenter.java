@@ -16,16 +16,15 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
+import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.JTextComponent;
-
 
 import co.edu.uptc.model.AudioPlayer;
 import co.edu.uptc.model.FavoritesManager;
@@ -59,6 +58,7 @@ import co.edu.uptc.view.ViewFrame;
 /**
  * Coordina la vista y los servicios del modelo para búsquedas, reproducción,
  * cola y gestión de favoritos y playlists.
+ * @author programacion 2
  */
 public class Presenter implements ActionListener {
 

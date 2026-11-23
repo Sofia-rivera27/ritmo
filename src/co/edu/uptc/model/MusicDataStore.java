@@ -19,7 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-
+/**
+ * @author programacion 2
+ * MusicDataStore
+ */
 public class MusicDataStore {
 
     private static final String FILE_NAME = "musica.properties";

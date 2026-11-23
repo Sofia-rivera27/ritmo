@@ -21,6 +21,7 @@ import java.util.Properties;
  * <p>
  * Por defecto el archivo queda en {@code ~/.ritmo/users.properties}, fuera del
  * proyecto, para que nunca se suba a GitHub.
+ * @author programacion 2
  */
 public class UserStore {
 

@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +15,7 @@ import java.util.regex.Pattern;
 /**
  * Sistema principal de la aplicación. Guarda los usuarios con sus bibliotecas
  * y los guarda o carga desde un archivo JSON.
+ * @author programacion 2
  */
 public class RitmoSystem extends Model {
 
