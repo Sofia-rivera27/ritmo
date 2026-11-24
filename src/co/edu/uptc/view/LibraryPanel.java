@@ -71,6 +71,7 @@ public class LibraryPanel extends MyPanel {
     private ActionListener favoriteListener;
     private ActionListener playlistListener;
     private ActionListener removeListener;
+    private ActionListener editListener;
     private ActionListener addSongListener;
     
     /**
@@ -317,10 +318,15 @@ public class LibraryPanel extends MyPanel {
         connect(playlist, index, () -> playlistListener);
         addToRow(row, playlist, 9, 0);
 
+        MyButton edit = createButton("Editar", Palette.TRANSPARENT, Palette.TEXT, Palette.TEXT_MUTED, 62);
+        edit.setToolTipText("Editar el título o la imagen de portada");
+        connect(edit, index, () -> editListener);
+        addToRow(row, edit, 10, 0);
+
         MyButton remove = createButton("Quitar", Palette.TRANSPARENT, Palette.TEXT, Palette.TEXT_MUTED, 70);
         remove.setToolTipText("Quitar de la biblioteca (el archivo no se borra)");
         connect(remove, index, () -> removeListener);
-        addToRow(row, remove, 10, 0);
+        addToRow(row, remove, 11, 0);
         return row;
     }
 
@@ -506,5 +512,10 @@ public class LibraryPanel extends MyPanel {
     /** Botón "Quitar" de cada canción. */
     public void addRemoveListener(ActionListener listener) {
         removeListener = listener;
+    }
+
+    /** Botón "Editar" de cada canción. */
+    public void addEditListener(ActionListener listener) {
+        editListener = listener;
     }
 }

@@ -54,6 +54,8 @@ public interface IFrame {
 
     RegisterPanel getRegisterPanel();
 
+    HomePanel getHomePanel();
+
     ExplorePanel getExplorePanel();
 
     LibraryPanel getLibraryPanel();

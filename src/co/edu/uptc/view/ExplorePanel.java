@@ -387,6 +387,12 @@ public class ExplorePanel extends MyPanel {
         return query.equals("Buscar por artista, género o canción...") ? "" : query;
     }
 
+    public void setSearchQuery(String query) {
+        searchField.setText(query == null || query.isBlank() ? "Buscar por artista, género o canción..." : query);
+        searchField.setForeground(query == null || query.isBlank() ? Palette.TEXT_MUTED : Palette.TEXT);
+        ThemeManager.refresh(searchField);
+    }
+
     public boolean isGenreMode() {
         return genreMode;
     }

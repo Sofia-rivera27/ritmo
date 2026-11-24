@@ -12,7 +12,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 import java.awt.Window;
@@ -43,9 +45,11 @@ import co.edu.uptc.model.SearchCriteria;
 import co.edu.uptc.model.Song;
 import co.edu.uptc.model.SongValidator;
 import co.edu.uptc.model.UserStore;
+import co.edu.uptc.view.EditSongDialog;
 import co.edu.uptc.view.ExplorePanel;
 import co.edu.uptc.view.FavoritesPanel;
 import co.edu.uptc.view.HistoryPanel;
+import co.edu.uptc.view.HomePanel;
 import co.edu.uptc.view.IFrame;
 import co.edu.uptc.view.LibraryPanel;
 import co.edu.uptc.view.MainPanel;
@@ -90,10 +94,20 @@ public class Presenter implements ActionListener {
     // Los botones de resultados envían índices; esta lista conserva su
     // correspondencia.
     private final List<Song> shownSongs = new ArrayList<>();
+    private final Map<String, List<Song>> exploreGenreResults = new LinkedHashMap<>();
+    private long exploreSearchRequestId;
     /** Canciones que se ven en Biblioteca, en el mismo orden (puede estar filtrada). */
     private final List<Song> shownLibrarySongs = new ArrayList<>();
     /** Favoritas que se ven en Favoritos, en el mismo orden (puede estar filtrada). */
     private final List<Song> shownFavorites = new ArrayList<>();
+    /** Recomendaciones de Home, en el mismo orden que muestran sus controles. */
+    private final List<Song> homeRecommendedSongs = new ArrayList<>();
+    private final Map<String, List<Song>> homeRecommendationsByGenre = new LinkedHashMap<>();
+    private long homeRequestId;
+    private String homeRecommendationGenre = "";
+    private String homeRequestGenre = "";
+    private boolean homeRecommendationsLoading;
+    private boolean homeRecommendationsRetryNeeded;
     /**ruta relativa*/
     private static final String DATA_DIR_KEY = "data.directory";
     public Presenter() {
@@ -111,6 +125,7 @@ public class Presenter implements ActionListener {
         wirePlaybackControls();
         wirePlayerBar();
         wireKeyboardShortcuts();
+        wireHome();
         wireExplore();
         wireFavorites();
         wireHistory();
@@ -216,6 +231,12 @@ public class Presenter implements ActionListener {
      * su propia carpeta) y muestra Home.
      */
     private void startSession(String role, String userName) {
+        homeRequestId++;
+        homeRecommendationsLoading = false;
+        homeRequestGenre = "";
+        homeRecommendationsRetryNeeded = false;
+        homeRecommendationsByGenre.clear();
+        homeRecommendedSongs.clear();
         musicDataStore = new MusicDataStore(userDataFile(role, userName));
         loadMusicData();
         frame.getMainPanel().setSessionUser(userName, UserStore.ROLE_ADMIN.equals(role));
@@ -224,6 +245,9 @@ public class Presenter implements ActionListener {
         frame.getFavoritesPanel().setUserName(userName);
         frame.getRegisterPanel().setSignUpMode(false); // limpia los campos
         frame.showApp();
+        homeRecommendationGenre = "";
+        homeRecommendedSongs.clear();
+        loadHomeRecommendations(preferredHomeGenre());
     }
 
     /**
@@ -240,6 +264,16 @@ public class Presenter implements ActionListener {
     private void logout() {
         saveMusicData();
         musicDataStore = null;
+        homeRequestId++;
+        homeRecommendationsLoading = false;
+        homeRequestGenre = "";
+        homeRecommendationsRetryNeeded = false;
+        homeRecommendationGenre = "";
+        homeRecommendationsByGenre.clear();
+        homeRecommendedSongs.clear();
+        frame.getHomePanel().showRecommendations(List.of(), "Inicia sesión para ver recomendaciones.");
+        exploreSearchRequestId++;
+        exploreGenreResults.clear();
 
         audioPlayer.stop();
         updatePlayerBar();
@@ -281,6 +315,7 @@ public class Presenter implements ActionListener {
             } else {
                 playCurrent();
             }
+
         });
         frame.getMainPanel().getNextButton().addActionListener(event -> playNext());
         frame.getMainPanel().getPreviousButton().addActionListener(event -> playPrevious());
@@ -288,6 +323,146 @@ public class Presenter implements ActionListener {
                 .addActionListener(event -> frame.getExplorePanel().showQueueDialog(queueRows(),
                         index -> removeFromQueue(index, frame.getExplorePanel())));
         updateQueueControls();
+    }
+
+    private void wireHome() {
+        HomePanel panel = frame.getHomePanel();
+        panel.addArtistListener(event -> searchFromHome(event.getActionCommand()));
+        panel.addAlbumListener(event -> searchFromHome(event.getActionCommand()));
+        panel.addFavoriteListener(event -> {
+            int index = parseIndex(event.getActionCommand());
+            if (index < 0 || index >= homeRecommendedSongs.size()) {
+                panel.setStatus("No se pudo identificar la canción recomendada.");
+                return;
+            }
+            Song song = homeRecommendedSongs.get(index);
+            if (favoritesManager.isFavorite(song)) {
+                favoritesManager.unmarkFavorite(song);
+            } else {
+                favoritesManager.markFavorite(song);
+            }
+            panel.setFavorite(index, favoritesManager.isFavorite(song));
+            refreshFavorites();
+            saveMusicData();
+        });
+        panel.addPlayListener(event -> {
+            int index = parseIndex(event.getActionCommand());
+            if (index < 0 || index >= homeRecommendedSongs.size()) {
+                panel.setStatus("No se pudo identificar la canción recomendada.");
+                return;
+            }
+            Song song = homeRecommendedSongs.get(index);
+            if (addToQueue(song, frame.getExplorePanel(), true)) {
+                panel.setStatus("Reproduciendo: " + song.getTitle() + " · " + song.getArtist());
+            } else {
+                panel.setStatus("No se pudo reproducir \"" + song.getTitle() + "\".");
+            }
+        });
+    }
+
+    private void loadHomeRecommendations(String genre) {
+        if (musicDataStore == null) {
+            return;
+        }
+        String selectedGenre = genre == null || genre.isBlank() ? "Pop" : genre.trim();
+        if (homeRecommendationsLoading && selectedGenre.equalsIgnoreCase(homeRequestGenre)) {
+            return;
+        }
+        long requestId = ++homeRequestId;
+        homeRecommendationsLoading = true;
+        homeRequestGenre = selectedGenre;
+        HomePanel panel = frame.getHomePanel();
+        panel.showRecommendations(homeRecommendedSongs, "Buscando recomendaciones de "
+                + selectedGenre + " en Jamendo...");
+        new Thread(() -> {
+            try {
+                List<Song> found = jamendoService.recommendByGenre(selectedGenre);
+                SwingUtilities.invokeLater(() -> {
+                    if (requestId != homeRequestId || musicDataStore == null) {
+                        return;
+                    }
+                    homeRecommendationsLoading = false;
+                    homeRequestGenre = "";
+                    if (found.isEmpty()) {
+                        homeRecommendationsRetryNeeded = true;
+                        List<Song> previous = homeRecommendationsByGenre.get(normalizeGenreKey(selectedGenre));
+                        if (previous == null || previous.isEmpty()) {
+                            previous = homeRecommendedSongs;
+                        }
+                        String status = previous.isEmpty()
+                                ? "Jamendo no encontró canciones para " + selectedGenre
+                                        + ". Se volverá a intentar al regresar a Home."
+                                : "Jamendo no respondió con resultados para " + selectedGenre
+                                        + "; se conservan las recomendaciones anteriores.";
+                        setHomeRecommendations(previous, status);
+                        return;
+                    }
+                    for (Song song : found) {
+                        song.setFavorite(favoritesManager.isFavorite(song));
+                    }
+                    homeRecommendationsByGenre.put(normalizeGenreKey(selectedGenre), new ArrayList<>(found));
+                    homeRecommendationGenre = selectedGenre;
+                    homeRecommendationsRetryNeeded = false;
+                    setHomeRecommendations(found, "Recomendaciones de " + selectedGenre + " · "
+                            + Math.min(found.size(), HomePanel.MAX_RECOMMENDATIONS) + " canciones de Jamendo.");
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    if (requestId == homeRequestId && musicDataStore != null) {
+                        homeRecommendationsLoading = false;
+                        homeRequestGenre = "";
+                        homeRecommendationsRetryNeeded = true;
+                        panel.setStatus("No se pudieron cargar recomendaciones de Jamendo: " + e.getMessage());
+                    }
+                });
+            }
+        }, "jamendo-home-recommendations").start();
+    }
+
+    private void setHomeRecommendations(List<Song> songs, String status) {
+        homeRecommendedSongs.clear();
+        homeRecommendedSongs.addAll(songs.subList(0,
+                Math.min(songs.size(), HomePanel.MAX_RECOMMENDATIONS)));
+        frame.getHomePanel().showRecommendations(homeRecommendedSongs, status);
+    }
+
+    private String normalizeGenreKey(String genre) {
+        return SongValidator.normalize(genre);
+    }
+
+    private String preferredHomeGenre() {
+        Map<String, Integer> playsByGenre = new LinkedHashMap<>();
+        Map<String, String> genreNames = new LinkedHashMap<>();
+        for (HistoryEntry entry : historyManager.getEntries()) {
+            String genre = SongValidator.clean(entry.getSong().getGenre());
+            if (!genre.isBlank() && !genre.equalsIgnoreCase("desconocido")) {
+                String key = SongValidator.normalize(genre);
+                playsByGenre.merge(key, 1, Integer::sum);
+                genreNames.putIfAbsent(key, genre);
+            }
+        }
+        String preferred = "Pop";
+        int mostPlayed = 0;
+        for (Map.Entry<String, Integer> entry : playsByGenre.entrySet()) {
+            if (entry.getValue() > mostPlayed) {
+                mostPlayed = entry.getValue();
+                preferred = genreNames.get(entry.getKey());
+            }
+        }
+        return mostPlayed >= 3 ? preferred : "Pop";
+    }
+
+    private void updateHomeGenrePreference() {
+        String preferred = preferredHomeGenre();
+        if (!preferred.equalsIgnoreCase(homeRecommendationGenre)) {
+            loadHomeRecommendations(preferred);
+        }
+    }
+
+    private void searchFromHome(String query) {
+        frame.getExplorePanel().setSearchQuery(query);
+        frame.showSection(IFrame.EXPLORE);
+        searchJamendo(frame.getExplorePanel(), query, false);
     }
 
     /**
@@ -426,6 +601,7 @@ public class Presenter implements ActionListener {
                 historyManager.clear();
                 refreshHistory();
                 saveMusicData();
+                loadHomeRecommendations(preferredHomeGenre());
             }
         });
     }
@@ -444,18 +620,46 @@ public class Presenter implements ActionListener {
     }
 
     private void searchJamendo(ExplorePanel panel, String query, boolean byGenre) {
+        long requestId = ++exploreSearchRequestId;
         panel.setStatus("Buscando en Jamendo...");
         // La consulta de red corre fuera del hilo de Swing para no bloquear la vista.
         new Thread(() -> {
             try {
                 List<Song> found = byGenre ? jamendoService.searchByGenre(query)
                         : jamendoService.search(query);
-                String title = byGenre ? "Resultados: género " + query + " · " + found.size()
-                        : "Resultados: " + query + " · " + found.size();
-                SwingUtilities.invokeLater(() -> showSongs(panel, found, title,
-                        found.isEmpty() ? "No se encontraron canciones." : " "));
+                SwingUtilities.invokeLater(() -> {
+                    if (requestId != exploreSearchRequestId) {
+                        return;
+                    }
+                    if (!found.isEmpty()) {
+                        if (byGenre) {
+                            exploreGenreResults.put(normalizeGenreKey(query), new ArrayList<>(found));
+                        }
+                        String title = byGenre ? "Resultados: género " + query + " · " + found.size()
+                                : "Resultados: " + query + " · " + found.size();
+                        showSongs(panel, found, title, " ");
+                        return;
+                    }
+
+                    List<Song> previous = byGenre
+                            ? exploreGenreResults.get(normalizeGenreKey(query)) : null;
+                    if (previous != null && !previous.isEmpty()) {
+                        showSongs(panel, previous,
+                                "Resultados guardados: género " + query + " · " + previous.size(),
+                                "Jamendo no devolvió resultados nuevos; se muestran los últimos resultados disponibles.");
+                    } else {
+                        String title = byGenre ? "Resultados: género " + query + " · 0"
+                                : "Resultados: " + query + " · 0";
+                        showSongs(panel, found, title,
+                                "No se encontraron canciones. Puedes volver a intentarlo más tarde.");
+                    }
+                });
             } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> panel.setStatus("Error de Jamendo: " + e.getMessage()));
+                SwingUtilities.invokeLater(() -> {
+                    if (requestId == exploreSearchRequestId) {
+                        panel.setStatus("Error de Jamendo: " + e.getMessage());
+                    }
+                });
             }
         }, "jamendo-search").start();
     }
@@ -631,6 +835,7 @@ public class Presenter implements ActionListener {
             historyManager.addPlayed(song);
             refreshHistory();
             saveMusicData();
+            updateHomeGenrePreference();
             frame.getExplorePanel().setStatus("Reproduciendo: " + song.getTitle()
                     + " - " + song.getArtist());
             frame.getMainPanel().getPlayPauseButton().setText("⏸");
@@ -890,8 +1095,35 @@ public class Presenter implements ActionListener {
                 addToPlaylist(song, panel::setStatus);
             }
         });
+        panel.addEditListener(event -> editLibrarySong(librarySongAt(event.getActionCommand())));
         panel.addRemoveListener(event -> removeFromLibrary(librarySongAt(event.getActionCommand())));
         refreshLibrary();
+    }
+
+    private void editLibrarySong(Song song) {
+        if (song == null) {
+            return;
+        }
+        Window owner = SwingUtilities.getWindowAncestor(frame.getDialogParent());
+        if (owner == null && frame.getDialogParent() instanceof Window) {
+            owner = (Window) frame.getDialogParent();
+        }
+        EditSongDialog dialog = new EditSongDialog(owner, song.getTitle(), song.getAlbumImage());
+        dialog.addSaveListener(event -> {
+            try {
+                model.updateSong(song, dialog.getSongTitle(), song.getArtist(), song.getAlbum(), song.getGenre(),
+                        dialog.getSelectedImage());
+                dialog.dispose();
+                refreshFavorites();
+                refreshPlaylists();
+                refreshHistory();
+                saveMusicData();
+                frame.getLibraryPanel().setStatus("Canción actualizada: " + song.getTitle());
+            } catch (IllegalArgumentException e) {
+                dialog.setStatus(e.getMessage());
+            }
+        });
+        dialog.setVisible(true);
     }
 
     /**
@@ -1279,6 +1511,13 @@ public class Presenter implements ActionListener {
     public void actionPerformed(ActionEvent event) {
         switch (event.getActionCommand()) {
             case IFrame.HOME:
+                frame.showSection(IFrame.HOME);
+                String preferredGenre = preferredHomeGenre();
+                if (homeRecommendationsRetryNeeded || homeRecommendedSongs.isEmpty()
+                        || !preferredGenre.equalsIgnoreCase(homeRecommendationGenre)) {
+                    loadHomeRecommendations(preferredGenre);
+                }
+                break;
             case IFrame.EXPLORE:
             case IFrame.LIBRARY:
             case IFrame.FAVORITES:

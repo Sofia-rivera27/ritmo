@@ -30,6 +30,7 @@ public class ViewFrame extends JFrame implements IFrame {
     
     private MainPanel mainPanel;
     private RegisterPanel registerPanel;
+    private HomePanel homePanel;
     /** Muestra una pantalla a la vez: inicio de sesión o la aplicación. */
     private final CardLayout screens = new CardLayout();
 
@@ -75,10 +76,8 @@ public class ViewFrame extends JFrame implements IFrame {
         getContentPane().add(mainPanel, APP_SCREEN);
 
 
-        registerSection(
-                HOME,
-                new HomePanel(),
-                mainPanel.getHomeButton());
+        homePanel = new HomePanel();
+        registerSection(HOME, homePanel, mainPanel.getHomeButton());
 
         // Explorar concentra la búsqueda,
         // los filtros y los resultados de Jamendo.
@@ -262,6 +261,11 @@ public class ViewFrame extends JFrame implements IFrame {
     @Override
     public MainPanel getMainPanel() {
         return mainPanel;
+    }
+
+    @Override
+    public HomePanel getHomePanel() {
+        return homePanel;
     }
 
     @Override
