@@ -71,7 +71,8 @@ public class LibraryPanel extends MyPanel {
     private ActionListener favoriteListener;
     private ActionListener playlistListener;
     private ActionListener removeListener;
-
+    private ActionListener addSongListener;
+    
     /**
      * Construye el panel, vacío.
      */
@@ -117,6 +118,12 @@ public class LibraryPanel extends MyPanel {
         texts.add(createLabel("Tus canciones importadas. Los archivos no se mueven de su carpeta.",
                 Palette.TEXT_MUTED, Font.PLAIN, 11));
 
+        
+        MyButton addSongButton = createButton("+ Agregar canciones", Palette.TRANSPARENT, Palette.ACCENT,
+                Palette.ACCENT, 145);
+        addSongButton.addActionListener(event -> forward(addSongListener, event));
+        
+        
         MyButton importButton = createButton("Importar MP3", Palette.TRANSPARENT, Palette.TEXT,
                 Palette.TEXT_MUTED, 120);
         importButton.addActionListener(event -> forward(importListener, event));
@@ -126,6 +133,7 @@ public class LibraryPanel extends MyPanel {
 
         MyPanel buttons = createTransparentPanel();
         buttons.applyLayout(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        buttons.add(addSongButton);
         buttons.add(importButton);
         buttons.add(playAllButton);
 
@@ -418,6 +426,20 @@ public class LibraryPanel extends MyPanel {
             listener.actionPerformed(event);
         }
     }
+    
+    
+    /**
+     * Registra el listener del botón "+ Agregar canciones".
+     *
+     * @param listener listener que abre la pantalla para agregar canciones
+     * @author progra 2
+     */
+    public void addAddSongListener(ActionListener listener) {
+        addSongListener = listener;
+    }
+    
+    
+    
 
     // ---------------------------------------------------------------
     // Métodos que usa el Presenter

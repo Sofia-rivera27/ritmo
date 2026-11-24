@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.prefs.Preferences;
-
+import java.awt.Window;
+import co.edu.uptc.view.AddSongDialog;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -25,7 +26,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.JTextComponent;
-
 import co.edu.uptc.model.AudioPlayer;
 import co.edu.uptc.model.FavoritesManager;
 import co.edu.uptc.model.HistoryEntry;
@@ -415,8 +415,12 @@ public class Presenter implements ActionListener {
             }
         });
         panel.addClearListener(event -> {
-            int answer = JOptionPane.showConfirmDialog(frame.getDialogParent(), "¿Seguro que quieres borrar el historial?",
-                    "Borrar historial", JOptionPane.YES_NO_OPTION);
+            int answer = JOptionPane.showConfirmDialog(
+                    frame.getDialogParent(),
+                    "¿Seguro que quieres eliminar todo el historial de reproducciones?\nEsta acción no se puede deshacer.",
+                    "Eliminar historial",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
             if (answer == JOptionPane.YES_OPTION) {
                 historyManager.clear();
                 refreshHistory();
@@ -852,6 +856,7 @@ public class Presenter implements ActionListener {
     private void wireLibrary() {
         LibraryPanel panel = frame.getLibraryPanel();
         panel.addSearchListener(event -> refreshLibrary());
+        panel.addAddSongListener(event -> openAddSongDialog());
         panel.addImportListener(event -> {
             panel.setStatus("Leyendo archivos MP3...");
             // Usa el mismo importador de Explorar; al terminar actualiza Biblioteca
@@ -1215,5 +1220,80 @@ public class Presenter implements ActionListener {
 
     public void saveInDirectory(String directoryPath) {
         persistenceManager.saveAllDataInDirectory(directoryPath);
+    }
+    
+    /**
+     * Abre la pantalla modal para agregar canciones desde una carpeta o
+     * manualmente.
+     *
+     * @author progra 2
+     */
+    private void openAddSongDialog() {
+        Window owner = SwingUtilities.getWindowAncestor(frame.getDialogParent());
+        if (owner == null && frame.getDialogParent() instanceof Window) {
+            owner = (Window) frame.getDialogParent();
+        }
+        AddSongDialog dialog = new AddSongDialog(owner);
+        dialog.addImportFolderListener(event -> importSongsFromFolder(dialog));
+        dialog.addManualSongListener(event -> addManualSong(dialog));
+        dialog.setVisible(true);
+    }
+
+    /**
+     * Escanea la carpeta elegida en un hilo secundario y agrega los MP3
+     * encontrados a la biblioteca.
+     *
+     * @param dialog diálogo desde el que se solicitó la importación
+     * @author progra 2
+     */
+    private void importSongsFromFolder(AddSongDialog dialog) {
+        File folder = dialog.getSelectedFolder();
+        if (folder == null) {
+            dialog.setStatus("Primero selecciona una carpeta.");
+            return;
+        }
+        dialog.setStatus("Escaneando carpeta...");
+        new Thread(() -> {
+            try {
+                List<Song> found = model.detectMp3InFolder(folder);
+                SwingUtilities.invokeLater(() -> {
+                    addImportedSongs(frame.getExplorePanel(), found);
+                    dialog.setStatus(frame.getLibraryPanel() != null
+                            ? "Importación completada (" + found.size() + " MP3 leídos)."
+                            : "Importación completada.");
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> dialog.setStatus("Error: " + e.getMessage()));
+            }
+        }, "folder-mp3-scan").start();
+    }
+
+    /**
+     * Valida y agrega una canción ingresada manualmente a la biblioteca.
+     *
+     * @param dialog diálogo con los datos de la canción
+     * @author progra 2
+     */
+    private void addManualSong(AddSongDialog dialog) {
+        File audio = dialog.getSelectedAudio();
+        String audioPath = audio == null ? "" : audio.getAbsolutePath();
+        Song song = new Song(
+                dialog.getSongTitle(),
+                dialog.getSongArtist(),
+                dialog.getSongAlbum(),
+                dialog.getSongGenre(),
+                dialog.getSelectedImage(),
+                0,
+                audioPath);
+        try {
+            model.addSong(song);
+            saveMusicData();
+            refreshLibrary();
+            frame.getLibraryPanel().setStatus("Canción agregada: " + song.getTitle());
+            dialog.clearManualFields();
+            dialog.setStatus("Canción agregada a la biblioteca.");
+        } catch (IllegalArgumentException e) {
+            dialog.setStatus(e.getMessage());
+        }
     }
 }
