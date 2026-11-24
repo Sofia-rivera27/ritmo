@@ -6,7 +6,9 @@ import java.awt.GridBagLayout;
 import java.awt.event.ActionListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
+import java.awt.Image;
+import java.io.File;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
@@ -22,6 +24,10 @@ public class ViewFrame extends JFrame implements IFrame {
     private static final String LOGIN_SCREEN = "LOGIN";
     private static final String APP_SCREEN = "APP";
 
+    //logo 
+    private static final String ICON_PATH = "resources" + File.separator + "loguito.png";
+    
+    
     private MainPanel mainPanel;
     private RegisterPanel registerPanel;
     /** Muestra una pantalla a la vez: inicio de sesión o la aplicación. */
@@ -40,6 +46,8 @@ public class ViewFrame extends JFrame implements IFrame {
     public ViewFrame() {
 
         super("Ritmo");
+        
+        loadAppIcon();
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1200, 800);
@@ -113,6 +121,27 @@ public class ViewFrame extends JFrame implements IFrame {
         applyTheme(lightTheme);
     }
 
+    
+    
+    /**
+     * Carga el ícono de la ventana desde una ruta relativa dentro del proyecto.
+     *
+     * @author progra 2
+     */
+    private void loadAppIcon() {
+        File iconFile = new File(ICON_PATH);
+        if (!iconFile.exists()) {
+            iconFile = new File("src" + File.separator + ICON_PATH);
+        }
+        if (iconFile.exists() && iconFile.isFile()) {
+            Image icon = new ImageIcon(iconFile.getAbsolutePath()).getImage();
+            setIconImage(icon);
+        } else {
+            System.err.println("No se encontró el logo. Buscado en: " + iconFile.getAbsolutePath());
+        }
+    }
+    
+    
     /**
      * Muestra la pantalla de inicio de sesión y pone el cursor en el usuario.
      */
