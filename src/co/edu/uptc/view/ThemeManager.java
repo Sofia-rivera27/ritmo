@@ -147,6 +147,10 @@ public final class ThemeManager {
 			if (color.equals(new Color(41, 41, 41)))
 				return new Color(230, 230, 230);
 
+			// Filas de las listas de Playlists
+			if (color.equals(new Color(33, 33, 33)))
+				return new Color(244, 244, 244);
+
 		} else {
 
 			if (color.equals(new Color(245, 245, 245)))
@@ -175,6 +179,9 @@ public final class ThemeManager {
 
 			if (color.equals(new Color(230, 230, 230)))
 				return new Color(41, 41, 41);
+
+			if (color.equals(new Color(244, 244, 244)))
+				return new Color(33, 33, 33);
 		}
 
 		return color;

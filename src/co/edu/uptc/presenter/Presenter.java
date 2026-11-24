@@ -51,6 +51,7 @@ import co.edu.uptc.view.LibraryPanel;
 import co.edu.uptc.view.MainPanel;
 import co.edu.uptc.view.PlaylistPanel;
 import co.edu.uptc.view.RegisterPanel;
+import co.edu.uptc.view.SongPickerDialog;
 import co.edu.uptc.view.ViewFrame;
 
 
@@ -84,8 +85,8 @@ public class Presenter implements ActionListener {
     private MusicDataStore musicDataStore;
     /** Preferencias del reproductor que se recuerdan entre sesiones (volumen). */
     private final Preferences preferences = Preferences.userNodeForPackage(Presenter.class);
-    /** Playlist abierta en la sección Playlists, o null si se ve la lista. */
-    private PlayList openPlaylist;
+    /** Playlist seleccionada en la sección Playlists, o null si no hay ninguna. */
+    private PlayList selectedPlaylist;
     // Los botones de resultados envían índices; esta lista conserva su
     // correspondencia.
     private final List<Song> shownSongs = new ArrayList<>();
@@ -252,7 +253,7 @@ public class Presenter implements ActionListener {
         }
         playlistManager.getPlayLists().clear();
         historyManager.clear();
-        openPlaylist = null;
+        selectedPlaylist = null;
 
         shownSongs.clear();
         frame.getExplorePanel().showResults(new ArrayList<>(), "Busca canciones o selecciona un género");
@@ -971,37 +972,100 @@ public class Presenter implements ActionListener {
 
     private void wirePlaylists() {
         PlaylistPanel panel = frame.getPlaylistPanel();
-        panel.addCreateListener(event -> askNewPlaylist());
-        panel.addOpenListener(event -> {
+        panel.addCreateListener(event -> createPlaylistFromPanel());
+        panel.addSelectListener(event -> {
             PlayList playlist = playlistAt(event.getActionCommand());
             if (playlist != null) {
-                openPlaylist = playlist;
+                selectedPlaylist = playlist;
+                panel.setStatus(" ");
                 refreshPlaylists();
             }
         });
-        panel.addBackListener(event -> {
-            openPlaylist = null;
-            refreshPlaylists();
-        });
-        panel.addRenameListener(event -> renamePlaylist(playlistAt(event.getActionCommand())));
-        panel.addDeleteListener(event -> deletePlaylist(playlistAt(event.getActionCommand())));
-        panel.addPlayAllListener(event -> playOpenPlaylist());
+        panel.addRenameListener(event -> renamePlaylist(selectedPlaylist));
+        panel.addDeleteListener(event -> deletePlaylist(selectedPlaylist));
+        panel.addPlayAllListener(event -> playSelectedPlaylist());
+        panel.addAddFromLibraryListener(event -> openSongPicker());
         panel.addPlaySongListener(event -> {
-            Song song = openPlaylistSongAt(event.getActionCommand());
-            if (song != null && !addToQueue(song, frame.getExplorePanel(), true)) {
+            Song song = selectedPlaylistSongAt(event.getActionCommand());
+            if (song == null) {
+                return;
+            }
+            if (addToQueue(song, frame.getExplorePanel(), true)) {
+                panel.setStatus("Reproduciendo: " + song.getTitle());
+            } else {
                 panel.setStatus("No se puede reproducir \"" + song.getTitle()
                         + "\": el archivo ya no existe o el enlace no es válido.");
             }
         });
         panel.addRemoveSongListener(event -> {
-            Song song = openPlaylistSongAt(event.getActionCommand());
+            Song song = selectedPlaylistSongAt(event.getActionCommand());
             if (song != null) {
-                openPlaylist.removeSong(song);
+                selectedPlaylist.removeSong(song);
+                panel.setStatus("Quitada de " + selectedPlaylist.getName() + ": " + song.getTitle());
                 refreshPlaylists();
                 saveMusicData();
             }
         });
         refreshPlaylists();
+    }
+
+    /**
+     * Crea una playlist con el nombre escrito en la tarjeta "Crear playlist".
+     * Si el nombre no es válido, muestra el motivo en la caja roja.
+     */
+    private void createPlaylistFromPanel() {
+        PlaylistPanel panel = frame.getPlaylistPanel();
+        try {
+            PlayList playlist = playlistManager.createPlayList(panel.getNewPlaylistName());
+            selectedPlaylist = playlist;
+            panel.clearNewPlaylistName();
+            panel.hideError();
+            panel.setStatus("Playlist creada: " + playlist.getName());
+            refreshPlaylists();
+            saveMusicData();
+        } catch (IllegalArgumentException e) {
+            panel.showError(e.getMessage());
+        }
+    }
+
+    /**
+     * Abre la ventana para elegir canciones de la biblioteca y agregarlas a la
+     * playlist seleccionada.
+     */
+    private void openSongPicker() {
+        if (selectedPlaylist == null) {
+            return;
+        }
+        PlayList playlist = selectedPlaylist;
+        List<Song> library = new ArrayList<>(model.getSongs());
+        List<String[]> rows = new ArrayList<>();
+        for (Song song : library) {
+            rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(), song.getGenre(),
+                    playlist.getSongs().contains(song) ? "1" : "0" });
+        }
+        SongPickerDialog[] dialog = new SongPickerDialog[1];
+        dialog[0] = new SongPickerDialog(dialogWindow(), playlist.getName(), rows, index -> {
+            Song song = library.get(index);
+            try {
+                playlist.addSong(song);
+            } catch (IllegalArgumentException e) {
+                dialog[0].setStatus(e.getMessage());
+                return false;
+            }
+            refreshPlaylists();
+            saveMusicData();
+            return true;
+        });
+        dialog[0].setVisible(true);
+    }
+
+    /** Ventana sobre la que se abren los diálogos propios (no los JOptionPane). */
+    private Window dialogWindow() {
+        Window owner = SwingUtilities.getWindowAncestor(frame.getDialogParent());
+        if (owner == null && frame.getDialogParent() instanceof Window) {
+            owner = (Window) frame.getDialogParent();
+        }
+        return owner;
     }
 
     private void renamePlaylist(PlayList playlist) {
@@ -1039,21 +1103,22 @@ public class Presenter implements ActionListener {
             return;
         }
         playlistManager.deletePlayList(playlist.getName());
-        if (openPlaylist == playlist) {
-            openPlaylist = null;
+        if (selectedPlaylist == playlist) {
+            selectedPlaylist = null; // refreshPlaylists elige la primera que quede
         }
+        frame.getPlaylistPanel().setStatus("Playlist eliminada: " + playlist.getName());
         refreshPlaylists();
         saveMusicData();
     }
 
-    /** Pone en la cola las canciones de la playlist abierta y empieza a reproducir. */
-    private void playOpenPlaylist() {
-        if (openPlaylist == null) {
+    /** Pone en la cola las canciones de la playlist seleccionada y empieza a reproducir. */
+    private void playSelectedPlaylist() {
+        if (selectedPlaylist == null) {
             return;
         }
         playbackQueue.clear();
         int skipped = 0;
-        for (Song song : openPlaylist.getSongs()) {
+        for (Song song : selectedPlaylist.getSongs()) {
             if (!playbackQueue.add(song)) {
                 skipped++;
             }
@@ -1065,20 +1130,29 @@ public class Presenter implements ActionListener {
             return;
         }
         playCurrent();
-        panel.setStatus(skipped == 0 ? "Reproduciendo " + openPlaylist.getName()
-                : "Reproduciendo " + openPlaylist.getName() + " · " + skipped
+        panel.setStatus(skipped == 0 ? "Reproduciendo " + selectedPlaylist.getName()
+                : "Reproduciendo " + selectedPlaylist.getName() + " · " + skipped
                         + " no se pudieron agregar (archivo no encontrado)");
     }
 
+    /**
+     * Vuelve a mostrar la sección Playlists. Si la playlist seleccionada ya no
+     * existe (o no hay ninguna), selecciona la primera.
+     */
     private void refreshPlaylists() {
         PlaylistPanel panel = frame.getPlaylistPanel();
-        if (openPlaylist != null && playlistManager.getPlayLists().contains(openPlaylist)) {
-            panel.showPlaylistDetail(openPlaylist.getName(), songRows(openPlaylist.getSongs()));
-        } else {
-            openPlaylist = null;
-            panel.showPlaylists(playlistRows());
+        List<PlayList> playlists = playlistManager.getPlayLists();
+        if (selectedPlaylist == null || !playlists.contains(selectedPlaylist)) {
+            selectedPlaylist = playlists.isEmpty() ? null : playlists.get(0);
         }
-        frame.refreshTheme();
+        panel.showPlaylists(playlistRows(), playlists.indexOf(selectedPlaylist));
+        if (selectedPlaylist == null) {
+            panel.showNoPlaylistSelected(!playlists.isEmpty());
+        } else {
+            int count = selectedPlaylist.getSongs().size();
+            panel.showSelectedPlaylist(selectedPlaylist.getName(),
+                    count == 1 ? "1 canción" : count + " canciones", playlistSongRows(selectedPlaylist.getSongs()));
+        }
     }
 
     private List<String[]> playlistRows() {
@@ -1090,11 +1164,11 @@ public class Presenter implements ActionListener {
         return rows;
     }
 
-    private List<String[]> songRows(List<Song> songs) {
+    private List<String[]> playlistSongRows(List<Song> songs) {
         List<String[]> rows = new ArrayList<>();
         for (Song song : songs) {
-            rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(),
-                    formatDuration(song.getDuration()) });
+            rows.add(new String[] { song.getTitle(), song.getArtist(), song.getAlbum(), song.getGenre(),
+                    formatDuration(song.getDuration()), favoritesManager.isFavorite(song) ? "1" : "0" });
         }
         return rows;
     }
@@ -1105,12 +1179,12 @@ public class Presenter implements ActionListener {
         return index >= 0 && index < playlists.size() ? playlists.get(index) : null;
     }
 
-    private Song openPlaylistSongAt(String command) {
-        if (openPlaylist == null) {
+    private Song selectedPlaylistSongAt(String command) {
+        if (selectedPlaylist == null) {
             return null;
         }
         int index = parseIndex(command);
-        List<Song> songs = openPlaylist.getSongs();
+        List<Song> songs = selectedPlaylist.getSongs();
         return index >= 0 && index < songs.size() ? songs.get(index) : null;
     }
 
