@@ -35,10 +35,32 @@ public class Model implements IModel {
     private List<Song> songs;
     /** Carpetas autorizadas para escanear. Si está vacía, no hay restricción. */
     private List<File> authorizedFolders;
+    /** Sesión actual; se consulta antes de las operaciones de administrador. */
+    private final UserSession session;
 
     public Model() {
+        this(new UserSession());
+    }
+
+    /**
+     * Crea el modelo usando la sesión recibida para validar los permisos.
+     *
+     * @param session sesión compartida con el resto de la aplicación
+     */
+    public Model(UserSession session) {
         songs = new ArrayList<>();
         authorizedFolders = new ArrayList<>();
+        this.session = session;
+    }
+
+    /**
+     * Comprueba que quien está en sesión sea administrador. Las operaciones
+     * administrativas del modelo la llaman antes de hacer cualquier cambio.
+     *
+     * @throws SecurityException si no hay sesión o la cuenta es de usuario
+     */
+    protected void validateAdminPermission() {
+        session.validateAdminPermission();
     }
 
     /**
@@ -240,10 +262,25 @@ public class Model implements IModel {
      * carpeta autorizada, solo se pueden escanear esas carpetas y sus subcarpetas.
      *
      * @param folder carpeta que se desea autorizar
+     * @throws SecurityException        si quien la llama no es administrador
      * @throws IllegalArgumentException si no es un directorio válido
      */
     @Override
     public void authorizeFolder(File folder) {
+        validateAdminPermission();
+        restoreAuthorizedFolder(folder);
+    }
+
+    /**
+     * Vuelve a poner una carpeta que el administrador ya había autorizado. Se usa
+     * al abrir la aplicación, antes de que alguien inicie sesión, para recuperar
+     * la configuración guardada; por eso no valida la sesión.
+     *
+     * @param folder carpeta autorizada que se desea recuperar
+     * @throws IllegalArgumentException si no es un directorio válido
+     */
+    @Override
+    public void restoreAuthorizedFolder(File folder) {
         SongValidator.validateFolder(folder, new ArrayList<>());
         if (!authorizedFolders.contains(folder)) {
             authorizedFolders.add(folder);
@@ -259,9 +296,11 @@ public class Model implements IModel {
      * Quita una carpeta de las autorizadas.
      *
      * @param folder carpeta que se desea quitar
+     * @throws SecurityException si quien la llama no es administrador
      */
     @Override
     public void removeAuthorizedFolder(File folder) {
+        validateAdminPermission();
         authorizedFolders.remove(folder);
     }
 

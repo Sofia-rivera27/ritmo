@@ -27,10 +27,23 @@ public class GenreManager {
     private static final String FILE_NAME = "generos.properties";
 
     private final List<Genre> genres;
+    /** Sesión actual; se consulta antes de cambiar los géneros. */
+    private final UserSession session;
     private File file;
 
     public GenreManager() {
+        this(new UserSession());
+    }
+
+    /**
+     * Crea el administrador de géneros usando la sesión recibida para validar los
+     * permisos.
+     *
+     * @param session sesión compartida con el resto de la aplicación
+     */
+    public GenreManager(UserSession session) {
         genres = new ArrayList<>();
+        this.session = session;
         file = new File(FILE_NAME);
     }
 
@@ -122,9 +135,11 @@ public class GenreManager {
     /**
      * Crea un género nuevo.
      *
+     * @throws SecurityException        si quien la llama no es administrador
      * @throws IllegalArgumentException si el nombre está vacío o ya existe
      */
     public Genre addGenre(String name, String color, File image) {
+        session.validateAdminPermission();
         String cleanName = SongValidator.clean(name);
         if (cleanName.isEmpty()) {
             throw new IllegalArgumentException(MSG_NAME);
@@ -141,9 +156,11 @@ public class GenreManager {
     /**
      * Cambia los datos de un género.
      *
+     * @throws SecurityException        si quien la llama no es administrador
      * @throws IllegalArgumentException si el nombre está vacío o es de otro género
      */
     public void updateGenre(Genre genre, String name, String color, File image) {
+        session.validateAdminPermission();
         String cleanName = SongValidator.clean(name);
         if (cleanName.isEmpty()) {
             throw new IllegalArgumentException(MSG_NAME);
@@ -158,7 +175,13 @@ public class GenreManager {
         genre.setDefaultImage(image);
     }
 
+    /**
+     * Elimina un género.
+     *
+     * @throws SecurityException si quien la llama no es administrador
+     */
     public void removeGenre(Genre genre) {
+        session.validateAdminPermission();
         genres.remove(genre);
     }
 
@@ -168,8 +191,10 @@ public class GenreManager {
      *
      * @param name nombre del género
      * @return true si se agregó
+     * @throws SecurityException si quien la llama no es administrador
      */
     public boolean addIfMissing(String name) {
+        session.validateAdminPermission();
         if (SongValidator.clean(name).isEmpty() || findGenre(name) != null) {
             return false;
         }

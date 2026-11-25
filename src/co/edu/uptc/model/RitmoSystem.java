@@ -37,6 +37,16 @@ public class RitmoSystem extends Model {
     private String jsonFilePath = "data" + File.separator + JSON_FILE_NAME;
 
     public RitmoSystem() {
+        this(new UserSession());
+    }
+
+    /**
+     * Crea el sistema usando la sesión recibida para validar los permisos.
+     *
+     * @param session sesión compartida con el resto de la aplicación
+     */
+    public RitmoSystem(UserSession session) {
+        super(session);
         users = new ArrayList<>();
         admin = new Admin();
     }
@@ -54,8 +64,11 @@ public class RitmoSystem extends Model {
 
     /**
      * Guarda todos los usuarios, con sus bibliotecas y playlists, en el archivo JSON.
+     *
+     * @throws SecurityException si quien la llama no es administrador
      */
     public void saveData() {
+        validateAdminPermission();
         File file = new File(jsonFilePath);
         if (file.getParentFile() != null) {
             file.getParentFile().mkdirs();
@@ -175,19 +188,39 @@ public class RitmoSystem extends Model {
         return text.replace("\\\"", "\"").replace("\\\\", "\\");
     }
 
+    /**
+     * @return todas las cuentas de usuario del sistema
+     * @throws SecurityException si quien la llama no es administrador
+     */
     public List<UserListener> getUsers() {
+        validateAdminPermission();
         return users;
     }
 
+    /**
+     * @param users nuevo listado de cuentas
+     * @throws SecurityException si quien la llama no es administrador
+     */
     public void setUsers(List<UserListener> users) {
+        validateAdminPermission();
         this.users = users;
     }
 
+    /**
+     * @return la cuenta de administrador
+     * @throws SecurityException si quien la llama no es administrador
+     */
     public Admin getAdmin() {
+        validateAdminPermission();
         return admin;
     }
 
+    /**
+     * @param admin nueva cuenta de administrador
+     * @throws SecurityException si quien la llama no es administrador
+     */
     public void setAdmin(Admin admin) {
+        validateAdminPermission();
         this.admin = admin;
     }
 }

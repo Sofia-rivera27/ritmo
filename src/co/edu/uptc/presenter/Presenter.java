@@ -52,6 +52,7 @@ import co.edu.uptc.model.RitmoSystem;
 import co.edu.uptc.model.SearchCriteria;
 import co.edu.uptc.model.Song;
 import co.edu.uptc.model.SongValidator;
+import co.edu.uptc.model.UserSession;
 import co.edu.uptc.model.UserStore;
 import co.edu.uptc.view.EditSongDialog;
 import co.edu.uptc.view.ExplorePanel;
@@ -87,6 +88,8 @@ public class Presenter implements ActionListener {
 	 * El modelo de canciones. El Presenter solo lo conoce por la interfaz IModel.
 	 */
 	private final IModel model;
+	/** Quién está en sesión y con qué rol; la comparten el modelo, las cuentas y los géneros. */
+	private final UserSession session = new UserSession();
 	private final UserStore userStore;
 	private final PersistenceManager persistenceManager;
 	private final JamendoService jamendoService = new JamendoService();
@@ -101,7 +104,7 @@ public class Presenter implements ActionListener {
 	private static final int MAX_ADMIN_ACTIVITY = 5;
 	private static final DateTimeFormatter ACTIVITY_DAY_FORMAT = DateTimeFormatter.ofPattern("dd/MM");
 	private AdminPanel adminPanel;
-	private final GenreManager genreManager = new GenreManager();
+	private final GenreManager genreManager = new GenreManager(session);
 	/**
 	 * Lo que se ve en cada tabla del administrador, en el mismo orden que las
 	 * filas.
@@ -154,9 +157,9 @@ public class Presenter implements ActionListener {
 	public Presenter() {
 		// Único lugar donde se eligen las clases concretas de la vista y el modelo
 		frame = new ViewFrame();
-		RitmoSystem ritmoSystem = new RitmoSystem();
+		RitmoSystem ritmoSystem = new RitmoSystem(session);
 		model = ritmoSystem;
-		userStore = new UserStore();
+		userStore = new UserStore(session);
 		persistenceManager = new PersistenceManager(userStore, ritmoSystem);
 
 		// Centraliza aquí las conexiones para que las vistas no accedan directamente al
@@ -239,15 +242,14 @@ public class Presenter implements ActionListener {
 			return;
 		}
 		String role = panel.isAdminSelected() ? UserStore.ROLE_ADMIN : UserStore.ROLE_USER;
-		if (userStore.login(role, name, password)) {
-			if (!userStore.isActive(UserStore.normalizeName(name))) {
-				panel.showMessage(UserStore.MSG_INACTIVE);
-				return;
-			}
-			startSession(role, UserStore.normalizeName(name));
-		} else {
-			panel.showMessage("Usuario o contraseña incorrectos.");
+		try {
+			// Valida contraseña, que el rol elegido sea el real de la cuenta y que esté activa
+			userStore.authenticate(role, name, password);
+		} catch (IllegalArgumentException e) {
+			panel.showMessage(e.getMessage());
+			return;
 		}
+		startSession(role, UserStore.normalizeName(name));
 	}
 
 	/*
@@ -280,6 +282,7 @@ public class Presenter implements ActionListener {
 	 * propia carpeta) y muestra Home.
 	 */
 	private void startSession(String role, String userName) {
+		session.start(role, userName);
 		homeRequestId++;
 		homeRecommendationsLoading = false;
 		homeRequestGenre = "";
@@ -294,7 +297,7 @@ public class Presenter implements ActionListener {
 		frame.getExplorePanel().setUserName(userName);
 		frame.getFavoritesPanel().setUserName(userName);
 		frame.getRegisterPanel().setSignUpMode(false); // limpia los campos
-		if (UserStore.ROLE_ADMIN.equals(role)) {
+		if (session.isAdministrator()) {
 			frame.showAdmin();
 			startAdmin(userName);
 		} else {
@@ -319,6 +322,7 @@ public class Presenter implements ActionListener {
 	private void logout() {
 		saveMusicData();
 		musicDataStore = null;
+		session.end();
 		homeRequestId++;
 		homeRecommendationsLoading = false;
 		homeRequestGenre = "";
@@ -1580,7 +1584,14 @@ public class Presenter implements ActionListener {
 		}
 	}
 
+	/**
+	 * Guarda todos los datos del sistema (todas las cuentas) en otra carpeta. Solo
+	 * la puede usar un administrador.
+	 */
 	public void saveInDirectory(String directoryPath) {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		persistenceManager.saveAllDataInDirectory(directoryPath);
 	}
 
@@ -1657,6 +1668,24 @@ public class Presenter implements ActionListener {
 	// Pantalla del administrador
 	// ---------------------------------------------------------------
 
+	/**
+	 * Comprueba que quien está en sesión sea administrador. Se llama al inicio de
+	 * cada operación administrativa; si no tiene permisos, avisa con un mensaje y
+	 * la operación no se ejecuta.
+	 *
+	 * @return true si puede continuar, false si se le negó el acceso
+	 */
+	private boolean validateAdminPermission() {
+		try {
+			session.validateAdminPermission();
+			return true;
+		} catch (SecurityException e) {
+			JOptionPane.showMessageDialog(frame.getDialogParent(), e.getMessage(), "Acceso denegado",
+					JOptionPane.WARNING_MESSAGE);
+			return false;
+		}
+	}
+
 	/** Conecta los botones de la pantalla del administrador. */
 	private void wireAdmin() {
 		adminPanel = frame.getAdminPanel();
@@ -1678,6 +1707,9 @@ public class Presenter implements ActionListener {
      * @param name nombre del administrador
      */
     private void startAdmin(String name) {
+        if (!validateAdminPermission()) {
+        	return;
+        }
         adminName = name;
         adminPanel.setAdminName(name);
         adminPanel.clearSearch();
@@ -1694,6 +1726,9 @@ public class Presenter implements ActionListener {
     }
 
 	private void refreshAdmin() {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		loadAllUsersData();
 		refreshAdminDashboard();
 		refreshAdminSongs();
@@ -1750,6 +1785,9 @@ public class Presenter implements ActionListener {
 	 * el modelo).
 	 */
 	private List<MusicDataStore> otherUserStores() {
+		if (!validateAdminPermission()) {
+			return new ArrayList<>();
+		}
 		List<MusicDataStore> stores = new ArrayList<>();
 		for (String[] account : userStore.getAccounts()) {
 			File file = persistenceManager.getUserDataFile(account[0], account[1]);
@@ -1865,6 +1903,9 @@ public class Presenter implements ActionListener {
 	}
 
 	private void saveAdminSong() {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		AdminSongsPanel songsPanel = adminPanel.getSongsPanel();
 		String title = songsPanel.getTitleText();
 		String artist = songsPanel.getArtistText();
@@ -1899,6 +1940,9 @@ public class Presenter implements ActionListener {
 	 */
 	private void updateSongEverywhere(Song song, String title, String artist, String album, String genre, File image)
 			throws IOException {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		// Copia con el título y artista de antes, para encontrarla en los demás
 		// usuarios
 		Song oldSong = new Song(song.getTitle(), song.getArtist(), "", "", (File) null, 0, null);
@@ -1932,6 +1976,9 @@ public class Presenter implements ActionListener {
 	 * @throws IOException si no se puede guardar el archivo de algún usuario
 	 */
 	private void removeSongEverywhere(Song song) throws IOException {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		if (model.getSongs().contains(song)) {
 			model.removeSong(song);
 		}
@@ -1975,6 +2022,9 @@ public class Presenter implements ActionListener {
 	}
 
 	private void deleteAdminSong() {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		if (adminSongToDelete == null) {
 			return;
 		}
@@ -2000,6 +2050,9 @@ public class Presenter implements ActionListener {
 	private void wireAdminFolders() {
 		AdminFoldersPanel foldersPanel = adminPanel.getFoldersPanel();
 		foldersPanel.addAuthorizeListener(event -> {
+			if (!validateAdminPermission()) {
+				return;
+			}
 			File folder = foldersPanel.chooseFolder();
 			if (folder == null) {
 				return;
@@ -2015,12 +2068,18 @@ public class Presenter implements ActionListener {
 			}
 		});
 		foldersPanel.addRemoveListener(event -> {
+			if (!validateAdminPermission()) {
+				return;
+			}
 			File folder = model.getAuthorizedFolders().get(Integer.parseInt(event.getActionCommand()));
 			model.removeAuthorizedFolder(folder);
 			saveAdminFolders();
 			refreshAdmin();
 		});
 		foldersPanel.addScanAllListener(event -> {
+			if (!validateAdminPermission()) {
+				return;
+			}
 			if (model.getAuthorizedFolders().isEmpty()) {
 				foldersPanel.showError("Primero autoriza una carpeta.");
 				return;
@@ -2042,6 +2101,9 @@ public class Presenter implements ActionListener {
 	 * nuevas, cuántas ya existían y cuántas no traían artista o álbum.
 	 */
 	private void scanAdminFolders(List<File> folders) {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		int newSongs = 0;
 		int existing = 0;
 		int noInfo = 0;
@@ -2106,7 +2168,7 @@ public class Presenter implements ActionListener {
 		for (String path : saved.split(File.pathSeparator)) {
 			File folder = new File(path);
 			if (!path.isEmpty() && folder.isDirectory() && !model.getAuthorizedFolders().contains(folder)) {
-				model.authorizeFolder(folder);
+				model.restoreAuthorizedFolder(folder);
 			}
 		}
 	}
@@ -2145,6 +2207,9 @@ public class Presenter implements ActionListener {
 	}
 
 	private void saveAdminUser() {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		AdminUsersPanel usersPanel = adminPanel.getUsersPanel();
 		String role = usersPanel.isAdminSelected() ? UserStore.ROLE_ADMIN : UserStore.ROLE_USER;
 		try {
@@ -2169,6 +2234,9 @@ public class Presenter implements ActionListener {
 	}
 
 	private void deleteAdminUser(String name) {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		if (name.equals(adminName)) {
 			JOptionPane.showMessageDialog(adminPanel, "No puedes eliminar tu propia cuenta.");
 			return;
@@ -2222,6 +2290,9 @@ public class Presenter implements ActionListener {
 	}
 
 	private void saveAdminGenre() {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		AdminGenresPanel genresPanel = adminPanel.getGenresPanel();
 		try {
 			if (adminEditingGenre == null) {
@@ -2260,6 +2331,9 @@ public class Presenter implements ActionListener {
     }
 
 	private void deleteAdminGenre(Genre genre) {
+		if (!validateAdminPermission()) {
+			return;
+		}
 		int songs = countSongsOfGenre(genre.getName());
 		if (songs > 0) {
 			adminPanel.getGenresPanel().showError("No se puede eliminar: hay " + songs + " canciones con este género.");
