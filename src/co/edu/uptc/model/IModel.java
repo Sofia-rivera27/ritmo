@@ -23,6 +23,8 @@ public interface IModel {
 
     void authorizeFolder(File folder);
 
+    void restoreAuthorizedFolder(File folder);
+
     List<Song> searchSongs(String text, SearchCriteria criteria);
     
     List<File> getAuthorizedFolders();

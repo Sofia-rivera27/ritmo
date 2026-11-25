@@ -43,7 +43,10 @@ public class UserStore {
 	public static final String MSG_CONFIRM = "Las contraseñas no coinciden.";
 	public static final String MSG_EXISTS = "Ese usuario ya existe.";
     public static final String MSG_NOT_FOUND = "El usuario no existe.";
-    public static final String MSG_INACTIVE = "Tu cuenta está inactiva.";
+    public static final String MSG_INACTIVE = "Tu cuenta se encuentra inactiva.";
+    public static final String MSG_BAD_LOGIN = "Usuario o contraseña incorrectos.";
+    public static final String MSG_NOT_ADMIN = "No tienes permisos de administrador.";
+    public static final String MSG_ADMIN_ACCOUNT = "Esta cuenta es de administrador.";
 
     // Cuenta inactiva: inactive.nombre = true
     private static final String INACTIVE_PREFIX = "inactive.";
@@ -55,14 +58,28 @@ public class UserStore {
 	private static final int SALT_BYTES = 16;
 
 	private final Properties properties;
+	/** Sesión actual; se consulta para saber si se pueden administrar cuentas. */
+	private final UserSession session;
 	private File file;
 
 	/**
 	 * Crea el almacén en la ubicación por defecto:
-	 * {@code ~/.ritmo/users.properties}.
+	 * {@code ~/.ritmo/users.properties}. Con una sesión propia en la que nadie ha
+	 * entrado, por lo que no se pueden hacer operaciones de administrador.
 	 */
 	public UserStore() {
+		this(new UserSession());
+	}
+
+	/**
+	 * Crea el almacén en la ubicación por defecto usando la sesión recibida para
+	 * validar los permisos.
+	 *
+	 * @param session sesión compartida con el resto de la aplicación
+	 */
+	public UserStore(UserSession session) {
 		properties = new Properties();
+		this.session = session;
 		file = new File(System.getProperty("user.home"), APP_FOLDER + File.separator + FILE_NAME);
 	}
 
@@ -89,7 +106,7 @@ public class UserStore {
 				properties.load(in);
 			}
 		} else {
-			add(ROLE_ADMIN, "admin", "admin");
+			store(ROLE_ADMIN, "admin", "admin");
 		}
 	}
 
@@ -141,7 +158,8 @@ public class UserStore {
 		if (exists(ROLE_USER, cleanName) || exists(ROLE_ADMIN, cleanName)) {
 			throw new IllegalArgumentException(MSG_EXISTS);
 		}
-		add(ROLE_USER, cleanName, password);
+		// El registro público siempre crea cuentas de usuario, nunca de administrador
+		store(ROLE_USER, cleanName, password);
 		return cleanName;
 	}
 
@@ -155,6 +173,35 @@ public class UserStore {
 	 */
 	public boolean login(String role, String name, String password) {
 		return checkPassword(role, normalizeName(name), password);
+	}
+
+	/**
+	 * Comprueba el inicio de sesión validando también el rol y el estado de la
+	 * cuenta. El motivo del rechazo solo se da cuando la contraseña es correcta,
+	 * para no revelar qué cuentas existen.
+	 *
+	 * @param role     rol elegido: {@link #ROLE_USER} o {@link #ROLE_ADMIN}
+	 * @param name     nombre de usuario (no importan las mayúsculas)
+	 * @param password contraseña
+	 * @throws IllegalArgumentException si el acceso no es válido; el mensaje se le
+	 *                                  puede mostrar a la persona
+	 */
+	public void authenticate(String role, String name, String password) {
+		String cleanName = normalizeName(name);
+		if (checkPassword(role, cleanName, password)) {
+			if (!isActive(cleanName)) {
+				throw new IllegalArgumentException(MSG_INACTIVE);
+			}
+			return;
+		}
+		// La contraseña es de una cuenta con el otro rol: se explica el motivo
+		if (ROLE_ADMIN.equals(role) && checkPassword(ROLE_USER, cleanName, password)) {
+			throw new IllegalArgumentException(MSG_NOT_ADMIN);
+		}
+		if (ROLE_USER.equals(role) && checkPassword(ROLE_ADMIN, cleanName, password)) {
+			throw new IllegalArgumentException(MSG_ADMIN_ACCOUNT);
+		}
+		throw new IllegalArgumentException(MSG_BAD_LOGIN);
 	}
 
 	/**
@@ -184,14 +231,23 @@ public class UserStore {
 	}
 
 	/**
-	 * Agrega una cuenta, con la contraseña protegida, y guarda el archivo.
+	 * Agrega una cuenta con el rol indicado, con la contraseña protegida, y guarda
+	 * el archivo. Es una operación de administrador (puede crear cuentas
+	 * administrativas), por eso se valida la sesión.
 	 *
 	 * @param role     rol de la cuenta: "user" o "admin"
 	 * @param name     nombre de la cuenta
 	 * @param password contraseña de la cuenta
-	 * @throws IOException si no se puede escribir el archivo
+	 * @throws SecurityException si quien la llama no es administrador
+	 * @throws IOException       si no se puede escribir el archivo
 	 */
 	public void add(String role, String name, String password) throws IOException {
+		session.validateAdminPermission();
+		store(role, name, password);
+	}
+
+	/** Guarda la cuenta sin validar permisos: solo para uso interno del almacén. */
+	private void store(String role, String name, String password) throws IOException {
 		properties.setProperty(key(role, name), protect(password));
 		save();
 	}
@@ -233,8 +289,10 @@ public class UserStore {
      * Lista todas las cuentas guardadas, ordenadas por nombre.
      *
      * @return cada elemento es un arreglo {rol, nombre}
+     * @throws SecurityException si quien la llama no es administrador
      */
     public List<String[]> getAccounts() {
+        session.validateAdminPermission();
         List<String[]> accounts = new ArrayList<>();
         for (String key : properties.stringPropertyNames()) {
             if (key.startsWith(ROLE_USER + ".")) {
@@ -268,10 +326,12 @@ public class UserStore {
      * Crea una cuenta desde la pantalla del administrador.
      *
      * @return el nombre tal como quedó guardado
+     * @throws SecurityException        si quien la llama no es administrador
      * @throws IllegalArgumentException si algún dato no es válido
      * @throws IOException              si no se puede guardar el archivo
      */
     public String createAccount(String name, String password, String role) throws IOException {
+        session.validateAdminPermission();
         String cleanName = normalizeName(name);
         if (cleanName.isEmpty() || password == null || password.isEmpty()) {
             throw new IllegalArgumentException(MSG_EMPTY);
@@ -285,7 +345,7 @@ public class UserStore {
         if (password.length() < MIN_PASSWORD_LENGTH) {
             throw new IllegalArgumentException(MSG_PASSWORD);
         }
-        add(role, cleanName, password);
+        store(role, cleanName, password);
         return cleanName;
     }
 
@@ -293,11 +353,13 @@ public class UserStore {
      * Edita una cuenta. El nombre no cambia; si la contraseña está vacía se
      * conserva la anterior.
      *
+     * @throws SecurityException        si quien la llama no es administrador
      * @throws IllegalArgumentException si algún dato no es válido
      * @throws IOException              si no se puede guardar el archivo
      */
     public void updateAccount(String name, String password, String role, boolean active)
             throws IOException {
+        session.validateAdminPermission();
         String oldRole = getRole(name);
         if (oldRole == null) {
             throw new IllegalArgumentException(MSG_NOT_FOUND);
@@ -324,9 +386,11 @@ public class UserStore {
     /**
      * Borra una cuenta.
      *
-     * @throws IOException si no se puede guardar el archivo
+     * @throws SecurityException si quien la llama no es administrador
+     * @throws IOException       si no se puede guardar el archivo
      */
     public void deleteAccount(String name) throws IOException {
+        session.validateAdminPermission();
         properties.remove(key(ROLE_USER, name));
         properties.remove(key(ROLE_ADMIN, name));
         properties.remove(INACTIVE_PREFIX + name);
