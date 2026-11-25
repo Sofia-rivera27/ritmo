@@ -334,8 +334,8 @@ public class ExplorePanel extends MyPanel {
         tag.applyLayout(new FlowLayout(FlowLayout.CENTER, 8, 2));
         tag.setBackgroundColor(Palette.TRANSPARENT);
         tag.setCornerRadius(10);
-        tag.setBorderColor(Palette.ACCENT);
-        tag.add(createLabel(genre, Palette.ACCENT, Font.PLAIN, 10));
+        tag.setBorderColor(AdminComponents.genreColor(genre));
+        tag.add(createLabel(genre, AdminComponents.genreColor(genre), Font.PLAIN, 10));
         return tag;
     }
 

@@ -358,9 +358,9 @@ public class FavoritesPanel extends MyPanel {
         tag.applyLayout(new FlowLayout(FlowLayout.CENTER, 10, 2));
         tag.setBackgroundColor(Palette.TRANSPARENT);
         tag.setCornerRadius(9);
-        tag.setBorderColor(Palette.ACCENT);
+        tag.setBorderColor(AdminComponents.genreColor(genre));
         tag.setPreferredSize(null); // se ajusta al texto
-        tag.add(createLabel(genre, Palette.ACCENT, Font.PLAIN, 10));
+        tag.add(createLabel(genre, AdminComponents.genreColor(genre), Font.PLAIN, 10));
         return tag;
     }
 

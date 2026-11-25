@@ -23,6 +23,7 @@ public class ViewFrame extends JFrame implements IFrame {
     // Nombres de las dos pantallas de la ventana
     private static final String LOGIN_SCREEN = "LOGIN";
     private static final String APP_SCREEN = "APP";
+    private static final String ADMIN_SCREEN = "ADMIN";
 
     //logo 
     private static final String ICON_PATH = "resources" + File.separator + "loguito.png";
@@ -31,6 +32,7 @@ public class ViewFrame extends JFrame implements IFrame {
     private MainPanel mainPanel;
     private RegisterPanel registerPanel;
     private HomePanel homePanel;
+    private AdminPanel adminPanel;
     /** Muestra una pantalla a la vez: inicio de sesión o la aplicación. */
     private final CardLayout screens = new CardLayout();
 
@@ -64,6 +66,7 @@ public class ViewFrame extends JFrame implements IFrame {
         getRootPane().setFocusable(true);
 
         mainPanel = new MainPanel();
+        adminPanel = new AdminPanel();
 
         // Pantalla de inicio de sesión: la tarjeta centrada sobre el fondo
         registerPanel = new RegisterPanel();
@@ -74,6 +77,7 @@ public class ViewFrame extends JFrame implements IFrame {
 
         getContentPane().add(loginScreen, LOGIN_SCREEN);
         getContentPane().add(mainPanel, APP_SCREEN);
+        getContentPane().add(adminPanel, ADMIN_SCREEN);
 
 
         homePanel = new HomePanel();
@@ -157,6 +161,20 @@ public class ViewFrame extends JFrame implements IFrame {
     public void showApp() {
         screens.show(getContentPane(), APP_SCREEN);
         showSection(HOME);
+    }
+    
+    /**
+     * Muestra la pantalla del administrador, empezando en el Dashboard.
+     */
+    @Override
+    public void showAdmin() {
+        screens.show(getContentPane(), ADMIN_SCREEN);
+        adminPanel.showSection(AdminPanel.DASHBOARD);
+    }
+    
+    @Override
+    public AdminPanel getAdminPanel() {
+        return adminPanel;
     }
 
     @Override
@@ -304,4 +322,5 @@ public class ViewFrame extends JFrame implements IFrame {
     public void refreshTheme() {
         applyTheme(lightTheme);
     }
+
 }

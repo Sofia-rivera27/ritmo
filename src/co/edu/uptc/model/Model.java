@@ -249,6 +249,40 @@ public class Model implements IModel {
             authorizedFolders.add(folder);
         }
     }
+    
+    @Override
+    public List<File> getAuthorizedFolders() {
+        return authorizedFolders;
+    }
+
+    /**
+     * Quita una carpeta de las autorizadas.
+     *
+     * @param folder carpeta que se desea quitar
+     */
+    @Override
+    public void removeAuthorizedFolder(File folder) {
+        authorizedFolders.remove(folder);
+    }
+
+    /**
+     * Cuenta los archivos .mp3 de una carpeta y sus subcarpetas, sin leerlos.
+     *
+     * @param folder carpeta que se desea revisar
+     * @return cantidad de archivos .mp3, o 0 si la carpeta no existe
+     */
+    @Override
+    public int countMp3InFolder(File folder) {
+        if (folder == null || !folder.isDirectory()) {
+            return 0;
+        }
+        try (Stream<Path> paths = Files.walk(folder.toPath())) {
+            return (int) paths.map(Path::toFile).filter(this::hasMp3Extension).count();
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+    
 
     /**
      * Busca las canciones cargadas cuyo título, artista o género contenga el
