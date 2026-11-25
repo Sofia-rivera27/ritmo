@@ -22,7 +22,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  * Pantalla modal para agregar canciones a la biblioteca desde una carpeta
  * o ingresando sus datos manualmente.
  *
- * @author progra 2
+ * @author programacion 2
  */
 public class AddSongDialog extends JDialog {
 

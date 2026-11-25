@@ -484,7 +484,8 @@ public class PlaylistPanel extends MyPanel {
         icon.setToolTipText("Reproducir");
         connect(icon, index, () -> playSongListener);
 
-        MyButton genreChip = new MyButton(song[GENRE], Palette.TRANSPARENT, Palette.ACCENT, Palette.ACCENT);
+        MyButton genreChip = new MyButton(song[GENRE], Palette.TRANSPARENT, AdminComponents.genreColor(song[GENRE]),
+                AdminComponents.genreColor(song[GENRE]));
         genreChip.setFixedSize(84, 24);
         genreChip.setCornerRadius(12);
         genreChip.setFontStyle(Font.PLAIN, 11);

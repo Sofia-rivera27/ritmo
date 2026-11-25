@@ -4,12 +4,14 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.text.JTextComponent;
 
 /**
  * Aplica el tema claro u oscuro al árbol de componentes Swing existente.
+ * 
  * @author programacion 2
  */
 public final class ThemeManager {
@@ -34,11 +36,11 @@ public final class ThemeManager {
 	}
 
 	/**
-	 * Vuelve a aplicar el tema activo a un componente y a todo lo que tiene
-	 * dentro. Se usa cuando una pantalla crea o repinta componentes después
-	 * de haber cambiado el tema (por ejemplo, filas de resultados nuevas o un
-	 * botón que se acaba de seleccionar), porque esos componentes se pintan
-	 * con los colores del tema oscuro.
+	 * Vuelve a aplicar el tema activo a un componente y a todo lo que tiene dentro.
+	 * Se usa cuando una pantalla crea o repinta componentes después de haber
+	 * cambiado el tema (por ejemplo, filas de resultados nuevas o un botón que se
+	 * acaba de seleccionar), porque esos componentes se pintan con los colores del
+	 * tema oscuro.
 	 *
 	 * @param component componente que se desea actualizar
 	 */
@@ -84,6 +86,13 @@ public final class ThemeManager {
 			field.setForeground(mapText(field.getForeground(), light));
 
 			field.setCaretColor(light ? Color.BLACK : Palette.TEXT);
+
+		} else if (component instanceof JComboBox) {
+
+			// Listas desplegables de las pantallas del administrador
+			component.setBackground(map(component.getBackground(), light));
+
+			component.setForeground(mapText(component.getForeground(), light));
 
 		} else if (component instanceof JList) {
 
