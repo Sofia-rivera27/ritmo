@@ -32,6 +32,9 @@ public interface IFrame {
 
     /** Muestra la aplicación, empezando en Home. */
     void showApp();
+    
+    /** Muestra la pantalla del administrador, empezando en el Dashboard. */
+    void showAdmin();
 
     /**
      * Muestra el panel de una sección y resalta su botón del menú.
@@ -81,4 +84,6 @@ public interface IFrame {
     void addWindowListener(WindowListener listener);
 
     void setVisible(boolean visible);
+
+	AdminPanel getAdminPanel();
 }

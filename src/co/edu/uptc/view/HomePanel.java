@@ -206,10 +206,10 @@ public class HomePanel extends MyPanel {
             JLabel album = createLabel(song.getAlbum(), Palette.TEXT_MUTED, Font.PLAIN, 11);
             MyPanel genreTag = new MyPanel();
             genreTag.setBackgroundColor(Palette.TRANSPARENT);
-            genreTag.setBorderColor(Palette.ACCENT);
+            genreTag.setBorderColor(AdminComponents.genreColor(song.getGenre()));
             genreTag.setCornerRadius(12);
             genreTag.applyLayout(new FlowLayout(FlowLayout.CENTER, 7, 2));
-            genreTag.add(createLabel(song.getGenre(), Palette.ACCENT, Font.PLAIN, 10));
+            genreTag.add(createLabel(song.getGenre(), AdminComponents.genreColor(song.getGenre()), Font.PLAIN, 10));
             JLabel duration = createLabel(formatDuration(song.getDuration()), Palette.TEXT_MUTED, Font.PLAIN, 11);
 
             addSongCell(row, number, 0, 0);
